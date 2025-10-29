@@ -329,6 +329,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return num;
     }
 
+    // Helper: parse number-like input allowing expressions with pi/π
+    function parseNumberInput(raw) {
+        if (raw == null) return NaN;
+        const s = String(raw).trim()
+            .replace(/π/gi, 'pi')
+            .replace(/,/g, '.');
+        if (s === '') return NaN;
+        // Fast path: plain number
+        const direct = Number(s);
+        if (isFinite(direct)) return direct;
+        // Fallback: evaluate with math.js
+        try {
+            const v = math.evaluate(s);
+            return (isFinite(v) ? v : NaN);
+        } catch (_) {
+            return NaN;
+        }
+    }
+
     // Przywróć ostatnie zakresy z localStorage
     try {
         const savedRanges = JSON.parse(localStorage.getItem('chartRanges')) || {};
@@ -523,10 +542,10 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAnalysisData.intersections = resultPayload.intersections || [];
             displayAnalysisResults();
 
-            const xMin = parseFloat(xMinInput.value);
-            const xMax = parseFloat(xMaxInput.value);
-            const yMin = parseFloat(yMinInput.value);
-            const yMax = parseFloat(yMaxInput.value);
+            const xMin = parseNumberInput(xMinInput.value);
+            const xMax = parseNumberInput(xMaxInput.value);
+            const yMin = parseNumberInput(yMinInput.value);
+            const yMax = parseNumberInput(yMaxInput.value);
 
             // Check if pi axis mode is enabled
             const piAxisCheckbox = document.getElementById('piAxisCheckbox');
@@ -836,7 +855,7 @@ document.addEventListener('DOMContentLoaded', () => {
             minLabel.style.fontSize = '10px';
             minLabel.style.color = '#666';
             const minInput = document.createElement('input');
-            minInput.type = 'number';
+            minInput.type = 'text';
             minInput.id = minId;
             minInput.value = -5;
             minInput.step = 0.5;
@@ -854,7 +873,7 @@ document.addEventListener('DOMContentLoaded', () => {
             maxLabel.style.fontSize = '10px';
             maxLabel.style.color = '#666';
             const maxInput = document.createElement('input');
-            maxInput.type = 'number';
+            maxInput.type = 'text';
             maxInput.id = maxId;
             maxInput.value = 5;
             maxInput.step = 0.5;
@@ -872,7 +891,7 @@ document.addEventListener('DOMContentLoaded', () => {
             stepLabel.style.fontSize = '10px';
             stepLabel.style.color = '#666';
             const stepInput = document.createElement('input');
-            stepInput.type = 'number';
+            stepInput.type = 'text';
             stepInput.id = stepId;
             stepInput.value = 0.1;
             stepInput.step = 0.01;
@@ -885,9 +904,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Event listeners dla zakresu
             const updateRange = () => {
-                const minVal = parseFloat(minInput.value);
-                const maxVal = parseFloat(maxInput.value);
-                const stepVal = parseFloat(stepInput.value);
+                const minVal = parseNumberInput(minInput.value);
+                const maxVal = parseNumberInput(maxInput.value);
+                const stepVal = parseNumberInput(stepInput.value);
                 
                 if (minVal < maxVal) {
                     input.min = minVal;
@@ -1100,8 +1119,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const mode = (modeEl && modeEl.value) || 'cartesian';
 
             // Read generic bounds a,b (used as: x-bounds for cartesian, t-bounds for parametric/polar)
-            const a = parseFloat(integralA.value);
-            const b = parseFloat(integralB.value);
+            const a = parseNumberInput(integralA.value);
+            const b = parseNumberInput(integralB.value);
             if (!isFinite(a) || !isFinite(b) || a >= b) {
                 errorDisplay.textContent = 'Nieprawidłowe granice całki (a < b)';
                 return;
@@ -1214,10 +1233,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } else if (mode === '3d') {
                 const surfaceInput = document.getElementById('surfaceInput');
-                const xMin3D = parseFloat(document.getElementById('xMin3D').value);
-                const xMax3D = parseFloat(document.getElementById('xMax3D').value);
-                const yMin3D = parseFloat(document.getElementById('yMin3D').value);
-                const yMax3D = parseFloat(document.getElementById('yMax3D').value);
+                const xMin3D = parseNumberInput(document.getElementById('xMin3D').value);
+                const xMax3D = parseNumberInput(document.getElementById('xMax3D').value);
+                const yMin3D = parseNumberInput(document.getElementById('yMin3D').value);
+                const yMax3D = parseNumberInput(document.getElementById('yMax3D').value);
                 if (!surfaceInput || !surfaceInput.value.trim()) {
                     errorDisplay.textContent = 'Wprowadź funkcję z(x,y)';
                     calcWorker.removeEventListener('message', integralListener);
@@ -1993,15 +2012,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Delegacja do workera: build a payload depending on mode
             // Przygotuj zakresy i dane do wykresu
-            const xMin = parseFloat(xMinInput.value);
-            const xMax = parseFloat(xMaxInput.value);
+            const xMin = parseNumberInput(xMinInput.value);
+            const xMax = parseNumberInput(xMaxInput.value);
             if (!(isFinite(xMin) && isFinite(xMax)) || xMin >= xMax) {
                 throw new Error("Niepoprawne wartości X min / X max.");
             }
 
             // Pobierz i waliduj zakres Y
-            const yMin = parseFloat(yMinInput.value);
-            const yMax = parseFloat(yMaxInput.value);
+            const yMin = parseNumberInput(yMinInput.value);
+            const yMax = parseNumberInput(yMaxInput.value);
             if (!(isFinite(yMin) && isFinite(yMax)) || yMin >= yMax) {
                 throw new Error("Niepoprawne wartości Y min / Y max.");
             }
@@ -2035,19 +2054,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (mode === 'parametric') {
                     payload.xExpr = (xParamInput && xParamInput.value) || '';
                     payload.yExpr = (yParamInput && yParamInput.value) || '';
-                    payload.tMin = parseFloat((tMinInput && tMinInput.value) || -6.28);
-                    payload.tMax = parseFloat((tMaxInput && tMaxInput.value) || 6.28);
+                    payload.tMin = parseNumberInput((tMinInput && tMinInput.value) || -6.28);
+                    payload.tMax = parseNumberInput((tMaxInput && tMaxInput.value) || 6.28);
                 } else if (mode === 'polar') {
                     payload.rExpr = (rInput && rInput.value) || '';
-                    payload.tMin = parseFloat((thetaMinInput && thetaMinInput.value) || 0);
-                    payload.tMax = parseFloat((thetaMaxInput && thetaMaxInput.value) || 6.28);
+                    payload.tMin = parseNumberInput((thetaMinInput && thetaMinInput.value) || 0);
+                    payload.tMax = parseNumberInput((thetaMaxInput && thetaMaxInput.value) || 6.28);
                 } else if (mode === '3d') {
                     const surfaceInput = document.getElementById('surfaceInput');
-                    const xMin3D = parseFloat(document.getElementById('xMin3D').value);
-                    const xMax3D = parseFloat(document.getElementById('xMax3D').value);
-                    const yMin3D = parseFloat(document.getElementById('yMin3D').value);
-                    const yMax3D = parseFloat(document.getElementById('yMax3D').value);
-                    const resolution3D = parseInt(document.getElementById('resolution3D').value);
+                    const xMin3D = parseNumberInput(document.getElementById('xMin3D').value);
+                    const xMax3D = parseNumberInput(document.getElementById('xMax3D').value);
+                    const yMin3D = parseNumberInput(document.getElementById('yMin3D').value);
+                    const yMax3D = parseNumberInput(document.getElementById('yMax3D').value);
+                    const resolution3D = parseNumberInput(document.getElementById('resolution3D').value);
 
                     if (!surfaceInput || !surfaceInput.value.trim()) {
                         throw new Error('Wprowadź funkcję z(x,y)');

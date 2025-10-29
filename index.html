@@ -44,10 +44,10 @@
                     </div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:8px;">
-                    <div><label for="xMin" style="display:block;margin-bottom:4px;">X min:</label><input type="number" id="xMin" value="-10" step="0.5" style="width:100%;"></div>
-                    <div><label for="xMax" style="display:block;margin-bottom:4px;">X max:</label><input type="number" id="xMax" value="10" step="0.5" style="width:100%;"></div>
-                    <div><label for="yMin" style="display:block;margin-bottom:4px;">Y min:</label><input type="number" id="yMin" value="-10" step="0.5" style="width:100%;"></div>
-                    <div><label for="yMax" style="display:block;margin-bottom:4px;">Y max:</label><input type="number" id="yMax" value="10" step="0.5" style="width:100%;"></div>
+                    <div><label for="xMin" style="display:block;margin-bottom:4px;">X min:</label><input type="text" id="xMin" value="-10" style="width:100%;" placeholder="np. -2*pi"></div>
+                    <div><label for="xMax" style="display:block;margin-bottom:4px;">X max:</label><input type="text" id="xMax" value="10" style="width:100%;" placeholder="np. 2*pi"></div>
+                    <div><label for="yMin" style="display:block;margin-bottom:4px;">Y min:</label><input type="text" id="yMin" value="-10" style="width:100%;"></div>
+                    <div><label for="yMax" style="display:block;margin-bottom:4px;">Y max:</label><input type="text" id="yMax" value="10" style="width:100%;"></div>
                 </div>
                 </div>
                 <!-- Parametryczne i biegunowe wejścia (poza blokiem kartezjańskim) -->
@@ -65,8 +65,8 @@
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-                        <div><label for="tMinInput" style="display:block;margin-bottom:4px;">t min:</label><input type="number" id="tMinInput" value="-6.28" step="0.1" style="width:100%;"></div>
-                        <div><label for="tMaxInput" style="display:block;margin-bottom:4px;">t max:</label><input type="number" id="tMaxInput" value="6.28" step="0.1" style="width:100%;"></div>
+                        <div><label for="tMinInput" style="display:block;margin-bottom:4px;">t min:</label><input type="text" id="tMinInput" value="-6.28" style="width:100%;" placeholder="np. -2*pi"></div>
+                        <div><label for="tMaxInput" style="display:block;margin-bottom:4px;">t max:</label><input type="text" id="tMaxInput" value="6.28" style="width:100%;" placeholder="np. 2*pi"></div>
                     </div>
                 </div>
 
@@ -78,8 +78,8 @@
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-                        <div><label for="thetaMinInput" style="display:block;margin-bottom:4px;">θ min:</label><input type="number" id="thetaMinInput" value="0" step="0.1" style="width:100%;"></div>
-                        <div><label for="thetaMaxInput" style="display:block;margin-bottom:4px;">θ max:</label><input type="number" id="thetaMaxInput" value="6.28" step="0.1" style="width:100%;"></div>
+                        <div><label for="thetaMinInput" style="display:block;margin-bottom:4px;">θ min:</label><input type="text" id="thetaMinInput" value="0" style="width:100%;" placeholder="np. 0"></div>
+                        <div><label for="thetaMaxInput" style="display:block;margin-bottom:4px;">θ max:</label><input type="text" id="thetaMaxInput" value="6.28" style="width:100%;" placeholder="np. 2*pi"></div>
                     </div>
                 </div>
                 
@@ -91,14 +91,14 @@
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:8px;">
-                        <div><label for="xMin3D" style="display:block;margin-bottom:4px;">X min:</label><input type="number" id="xMin3D" value="-5" step="0.5" style="width:100%;"></div>
-                        <div><label for="xMax3D" style="display:block;margin-bottom:4px;">X max:</label><input type="number" id="xMax3D" value="5" step="0.5" style="width:100%;"></div>
-                        <div><label for="yMin3D" style="display:block;margin-bottom:4px;">Y min:</label><input type="number" id="yMin3D" value="-5" step="0.5" style="width:100%;"></div>
-                        <div><label for="yMax3D" style="display:block;margin-bottom:4px;">Y max:</label><input type="number" id="yMax3D" value="5" step="0.5" style="width:100%;"></div>
+                        <div><label for="xMin3D" style="display:block;margin-bottom:4px;">X min:</label><input type="text" id="xMin3D" value="-5" style="width:100%;"></div>
+                        <div><label for="xMax3D" style="display:block;margin-bottom:4px;">X max:</label><input type="text" id="xMax3D" value="5" style="width:100%;"></div>
+                        <div><label for="yMin3D" style="display:block;margin-bottom:4px;">Y min:</label><input type="text" id="yMin3D" value="-5" style="width:100%;"></div>
+                        <div><label for="yMax3D" style="display:block;margin-bottom:4px;">Y max:</label><input type="text" id="yMax3D" value="5" style="width:100%;"></div>
                     </div>
                     <div style="margin-top:8px;">
                         <label for="resolution3D" style="display:block;margin-bottom:4px;">Rozdzielczość:</label>
-                        <input type="number" id="resolution3D" value="50" min="10" max="200" step="5" style="width:100%;">
+                        <input type="text" id="resolution3D" value="50" style="width:100%;" placeholder="np. 25*2">
                     </div>
                 </div>
                 <div id="cartesianQuickFunctions" class="quick-functions">
@@ -220,9 +220,9 @@
                                 <label style="display:block;margin-bottom:6px;font-weight:500;font-size:12px;">Całka oznaczona:</label>
                                 <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
                                     <label for="integralA" style="font-size:12px;">a:</label>
-                                    <input type="number" id="integralA" value="0" step="0.1" style="width:60px;padding:4px;font-size:12px;">
+                                    <input type="text" id="integralA" value="0" style="width:80px;padding:4px;font-size:12px;" placeholder="np. 0 lub pi/2">
                                     <label for="integralB" style="font-size:12px;">b:</label>
-                                    <input type="number" id="integralB" value="1" step="0.1" style="width:60px;padding:4px;font-size:12px;">
+                                    <input type="text" id="integralB" value="1" style="width:80px;padding:4px;font-size:12px;" placeholder="np. pi">
                                 </div>
                                 <button id="calculateIntegralButton" style="width:100%;font-size:12px;padding:6px;">Oblicz i zacieniuj</button>
                                 <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;">
