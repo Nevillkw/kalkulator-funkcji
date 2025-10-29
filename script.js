@@ -345,7 +345,9 @@ document.addEventListener('DOMContentLoaded', () => {
         yMaxInput.value = 10;
     }
     let myChart = null; // referencja do wykresu Plotly (graph div)
-    let currentIntegralTrace = null; // track shaded integral area
+    let currentIntegralTrace = null; // track shaded integral area (can be a single trace or an array of traces)
+    let currentIntegralShapes = null; // layout shapes for integral (band + boundaries)
+    let currentIntegralAnnotations = null; // layout annotations for integral (labels a, b)
     let currentAnalysisData = { zeros: [], extrema: [], intersections: [], integral: null }; // store for display
     
     // Calculator worker - handles heavy computations
@@ -467,9 +469,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             
-            // Add shaded integral area if exists
-            if (currentIntegralTrace) {
-                traces.push(currentIntegralTrace);
+            // Add shaded integral area if exists (only in cartesian)
+            if (!resultPayload.polar && currentIntegralTrace) {
+                if (Array.isArray(currentIntegralTrace)) {
+                    // push all integral shading traces
+                    traces.push(...currentIntegralTrace);
+                } else {
+                    traces.push(currentIntegralTrace);
+                }
             }
             
             // Add loaded data points if exist (for curve fitting)
@@ -620,6 +627,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 layout = Object.assign({}, layout, polarLayout);
+            }
+
+            // If we have integral decorations and we're in cartesian mode, inject them
+            if (!resultPayload.polar && currentAnalysisData.integral && currentIntegralShapes) {
+                layout.shapes = (layout.shapes || []).concat(currentIntegralShapes);
+            }
+            if (!resultPayload.polar && currentAnalysisData.integral && currentIntegralAnnotations) {
+                layout.annotations = (layout.annotations || []).concat(currentIntegralAnnotations);
             }
 
             const config = { responsive: true, scrollZoom: true, modeBarButtonsToRemove: ['select2d','lasso2d','zoom2d'] };
@@ -1087,19 +1102,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Create shaded area for integral visualization
+    // Create shaded area for integral visualization (clearer boundaries, pos/neg areas, band and labels)
     function createIntegralShading(expression, a, b) {
         try {
             const node = math.parse(expression);
             const compiled = node.compile();
             const scope = collectScope();
-            
+
             // Sample points in [a, b] range
             const steps = 200;
             const dx = (b - a) / steps;
             const xs = [];
             const ys = [];
-            
+
             for (let i = 0; i <= steps; i++) {
                 const x = a + i * dx;
                 xs.push(x);
@@ -1110,22 +1125,134 @@ document.addEventListener('DOMContentLoaded', () => {
                     ys.push(null);
                 }
             }
-            
-            currentIntegralTrace = {
-                x: xs,
-                y: ys,
-                fill: 'tozeroy',
-                fillcolor: 'rgba(100, 150, 255, 0.3)',
-                line: { width: 0 },
+
+            // Build positive and negative area traces with zero-crossing interpolation
+            const posX = [];
+            const posY = [];
+            const negX = [];
+            const negY = [];
+
+            for (let i = 0; i < xs.length; i++) {
+                const x = xs[i], y = ys[i];
+                const prevY = i > 0 ? ys[i - 1] : null;
+                const prevX = i > 0 ? xs[i - 1] : null;
+
+                if (y === null || y === undefined) {
+                    posX.push(x); posY.push(null);
+                    negX.push(x); negY.push(null);
+                    continue;
+                }
+
+                // Insert zero-crossing point for cleaner boundary
+                if (i > 0 && prevY !== null && prevY !== undefined && prevY * y < 0) {
+                    const t = prevY / (prevY - y);
+                    const xz = prevX + t * (x - prevX);
+                    posX.push(xz); posY.push(0);
+                    negX.push(xz); negY.push(0);
+                }
+
+                if (y >= 0) {
+                    posX.push(x); posY.push(y);
+                    negX.push(x); negY.push(null);
+                } else {
+                    posX.push(x); posY.push(null);
+                    negX.push(x); negY.push(y);
+                }
+            }
+
+            // Create fill traces
+            const posTrace = {
+                x: posX,
+                y: posY,
+                type: 'scatter',
                 mode: 'lines',
+                fill: 'tozeroy',
+                fillcolor: 'rgba(76, 175, 80, 0.28)', // greenish for positive area
+                line: { width: 0 },
                 name: `∫ f(x) dx [${a.toFixed(2)}, ${b.toFixed(2)}]`,
                 showlegend: true,
-                hoverinfo: 'skip'
+                hoverinfo: 'skip',
+                cliponaxis: true
             };
-            
+
+            const negTrace = {
+                x: negX,
+                y: negY,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                fillcolor: 'rgba(244, 67, 54, 0.25)', // reddish for negative area
+                line: { width: 0 },
+                name: 'Obszar całki (ujemny)',
+                showlegend: false,
+                hoverinfo: 'skip',
+                cliponaxis: true
+            };
+
+            // Keep only traces that actually have visible segments
+            const integralTraces = [];
+            const hasPos = posY.some(v => v !== null && v !== 0);
+            const hasNeg = negY.some(v => v !== null && v !== 0);
+            if (hasPos) integralTraces.push(posTrace);
+            if (hasNeg) integralTraces.push(negTrace);
+            if (!hasPos && !hasNeg) {
+                // fallback minimal (all zero) to keep legend entry
+                integralTraces.push(posTrace);
+            }
+            currentIntegralTrace = integralTraces;
+
+            // Create layout shapes: background band [a,b] and boundary lines at a, b
+            currentIntegralShapes = [
+                // subtle band spanning the interval [a,b]
+                {
+                    type: 'rect',
+                    xref: 'x', yref: 'paper',
+                    x0: a, x1: b, y0: 0, y1: 1,
+                    fillcolor: 'rgba(100, 150, 255, 0.08)',
+                    line: { width: 0 },
+                    layer: 'below'
+                },
+                // left boundary
+                {
+                    type: 'line',
+                    xref: 'x', yref: 'paper',
+                    x0: a, x1: a, y0: 0, y1: 1,
+                    line: { color: 'rgba(100, 150, 255, 0.9)', width: 2, dash: 'dot' }
+                },
+                // right boundary
+                {
+                    type: 'line',
+                    xref: 'x', yref: 'paper',
+                    x0: b, x1: b, y0: 0, y1: 1,
+                    line: { color: 'rgba(100, 150, 255, 0.9)', width: 2, dash: 'dot' }
+                }
+            ];
+
+            // Annotations for a and b at the bottom axis
+            currentIntegralAnnotations = [
+                {
+                    x: a, y: 0,
+                    xref: 'x', yref: 'paper',
+                    text: 'a',
+                    showarrow: false,
+                    xanchor: 'center', yanchor: 'top',
+                    yshift: 12,
+                    font: { size: 12, color: '#2c3e50' }
+                },
+                {
+                    x: b, y: 0,
+                    xref: 'x', yref: 'paper',
+                    text: 'b',
+                    showarrow: false,
+                    xanchor: 'center', yanchor: 'top',
+                    yshift: 12,
+                    font: { size: 12, color: '#2c3e50' }
+                }
+            ];
+
             // Redraw plot with shading
             plotButton.click();
-            
+
         } catch (err) {
             errorDisplay.textContent = `Błąd cieniowania: ${err.message}`;
         }
