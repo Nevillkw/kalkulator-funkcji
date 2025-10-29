@@ -336,13 +336,126 @@ self.onmessage = function (ev) {
 	// Handle integral calculation separately
 	if (msg.type === 'computeIntegral') {
 		try {
-			const { expression, a, b, scope } = msg.payload;
-			const node = math.parse(expression);
-			const compiled = node.compile();
-			const integralValue = computeDefiniteIntegral(compiled, a, b, scope || {}, 2000);
+			const { mode } = msg.payload;
+			const scope = msg.payload.scope || {};
+			let resultPayload = { value: NaN };
+			if (!mode || mode === 'cartesian') {
+				const { expression, a, b } = msg.payload;
+				const node = math.parse(expression);
+				const compiled = node.compile();
+				const integralValue = computeDefiniteIntegral(compiled, a, b, scope || {}, 2000);
+				resultPayload = { value: integralValue, a, b, expression, mode: 'cartesian' };
+			} else if (mode === 'parametric') {
+				const { xExpr, yExpr, a, b } = msg.payload;
+				if (!xExpr || !yExpr) throw new Error('Brak wyrażeń parametrycznych x(t), y(t)');
+				const compiledY = math.parse(yExpr).compile();
+				let compiledDXDT = null;
+				try {
+					const dxdtNode = math.derivative(xExpr, 't');
+					compiledDXDT = dxdtNode.compile();
+				} catch (e) {
+					compiledDXDT = null;
+				}
+				// integrand: y(t) * x'(t)
+				const integrand = (t) => {
+					let yv = NaN;
+					let dxdt = NaN;
+					try { yv = compiledY.evaluate(Object.assign({ t }, scope)); } catch (e) { yv = NaN; }
+					if (compiledDXDT) {
+						try { dxdt = compiledDXDT.evaluate(Object.assign({ t }, scope)); } catch (e) { dxdt = NaN; }
+					} else {
+						// numeric derivative for x'(t)
+						try {
+							const compiledX = math.parse(xExpr).compile();
+							const h = Math.max(1e-5, Math.abs(b - a) / 1e6);
+							const xm = compiledX.evaluate(Object.assign({ t: t - h }, scope));
+							const xp = compiledX.evaluate(Object.assign({ t: t + h }, scope));
+							dxdt = (xp - xm) / (2 * h);
+						} catch (e) { dxdt = NaN; }
+					}
+					const v = yv * dxdt;
+					return (isFinite(v) ? v : NaN);
+				};
+				// integrate integrand over [a,b]
+				const steps = 2000;
+				const n = Math.max(steps, 200);
+				const h = (b - a) / n;
+				let sum = 0;
+				const f0 = integrand(a);
+				const fn = integrand(b);
+				if (!isFinite(f0) || !isFinite(fn)) throw new Error('Nieprawidłowe wartości na granicach całki');
+				sum = f0 + fn;
+				for (let i = 1; i < n; i++) {
+					const t = a + i * h;
+					const ft = integrand(t);
+					if (!isFinite(ft)) throw new Error('Integrand nieokreślony w przedziale parametrycznym');
+					sum += (i % 2 === 0 ? 2 : 4) * ft;
+				}
+				resultPayload = { value: (h / 3) * sum, a, b, mode: 'parametric', xExpr, yExpr };
+			} else if (mode === 'polar') {
+				const { rExpr, a, b } = msg.payload;
+				if (!rExpr) throw new Error('Brak wyrażenia r(t)');
+				const compiledR = math.parse(rExpr).compile();
+				const integrand = (t) => {
+					let r = NaN;
+					try { r = compiledR.evaluate(Object.assign({ t }, scope)); } catch (e) { r = NaN; }
+					const v = 0.5 * r * r;
+					return (isFinite(v) ? v : NaN);
+				};
+				const steps = 2000;
+				const n = Math.max(steps, 200);
+				const h = (b - a) / n;
+				let sum = 0;
+				const f0 = integrand(a);
+				const fn = integrand(b);
+				if (!isFinite(f0) || !isFinite(fn)) throw new Error('Nieprawidłowe wartości na granicach całki');
+				sum = f0 + fn;
+				for (let i = 1; i < n; i++) {
+					const t = a + i * h;
+					const ft = integrand(t);
+					if (!isFinite(ft)) throw new Error('Integrand nieokreślony w przedziale biegunowym');
+					sum += (i % 2 === 0 ? 2 : 4) * ft;
+				}
+				resultPayload = { value: (h / 3) * sum, a, b, mode: 'polar', rExpr };
+			} else if (mode === '3d') {
+				const { expr, xRange, yRange } = msg.payload;
+				if (!expr || !xRange || !yRange) throw new Error('Brak danych do całki 3D');
+				const compiledZ = math.parse(expr).compile();
+				// Iterated trapezoidal rule over rectangle
+				const nx = 120; // reasonable resolution in worker
+				const ny = 120;
+				const hx = (xRange.max - xRange.min) / nx;
+				const hy = (yRange.max - yRange.min) / ny;
+				function f(x, y) {
+					try {
+						const v = compiledZ.evaluate(Object.assign({ x, y }, scope));
+						return (isFinite(v) ? v : 0);
+					} catch (e) { return 0; }
+				}
+				// Integrate over y for each x
+				const Iy = new Array(nx + 1).fill(0);
+				for (let i = 0; i <= nx; i++) {
+					const x = xRange.min + i * hx;
+					let sumY = 0;
+					for (let j = 0; j <= ny; j++) {
+						const y = yRange.min + j * hy;
+						const w = (j === 0 || j === ny) ? 1 : 2; // trapezoid weights
+						sumY += w * f(x, y);
+					}
+					Iy[i] = (hy / 2) * sumY;
+				}
+				// Integrate Iy over x
+				let sumX = 0;
+				for (let i = 0; i <= nx; i++) {
+					const w = (i === 0 || i === nx) ? 1 : 2;
+					sumX += w * Iy[i];
+				}
+				const volume = (hx / 2) * sumX;
+				resultPayload = { value: volume, mode: '3d', xRange, yRange, expr };
+			}
 			self.postMessage({ 
 				type: 'integralResult', 
-				payload: { value: integralValue, a, b, expression } 
+				payload: resultPayload 
 			});
 		} catch (err) {
 			self.postMessage({ 

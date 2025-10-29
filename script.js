@@ -349,6 +349,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentIntegralShapes = null; // layout shapes for integral (band + boundaries)
     let currentIntegralAnnotations = null; // layout annotations for integral (labels a, b)
     let currentAnalysisData = { zeros: [], extrema: [], intersections: [], integral: null }; // store for display
+    let currentPolarIntegralTraces = null; // polar wedge and optional label marker
+    let currentParametricHighlightTrace = null; // highlighted segment for t in [a,b]
     
     // Calculator worker - handles heavy computations
     let calcWorker = null;
@@ -382,7 +384,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (integral !== null && integral !== undefined) {
-            parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Całka oznaczona [${integral.a.toFixed(2)}, ${integral.b.toFixed(2)}]:</strong><br><span style="font-size:14px;color:#495057;font-weight:600;">${integral.value.toFixed(6)}</span></div>`);
+            const mode = integral.mode || 'cartesian';
+            let title = 'Całka oznaczona';
+            let rangeTxt = '';
+            if (mode === 'cartesian') {
+                title = 'Całka ∫ f(x) dx';
+                if (isFinite(integral.a) && isFinite(integral.b)) rangeTxt = `[${integral.a.toFixed(2)}, ${integral.b.toFixed(2)}]`;
+            } else if (mode === 'parametric') {
+                title = 'Całka parametryczna ∫ y dx';
+                if (isFinite(integral.a) && isFinite(integral.b)) rangeTxt = `t∈[${integral.a.toFixed(2)}, ${integral.b.toFixed(2)}]`;
+            } else if (mode === 'polar') {
+                title = 'Pole w biegunowych ½∫ r(θ)² dθ';
+                if (isFinite(integral.a) && isFinite(integral.b)) rangeTxt = `θ∈[${integral.a.toFixed(2)}, ${integral.b.toFixed(2)}]`;
+            } else if (mode === '3d') {
+                title = 'Podwójna całka ∬ z(x,y) dA';
+                if (integral.xRange && integral.yRange) {
+                    rangeTxt = `x∈[${integral.xRange.min.toFixed(2)}, ${integral.xRange.max.toFixed(2)}], y∈[${integral.yRange.min.toFixed(2)}, ${integral.yRange.max.toFixed(2)}]`;
+                }
+            }
+            const rangeLabel = rangeTxt ? ` ${rangeTxt}` : '';
+            parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">${title}${rangeLabel}:</strong><br><span style="font-size:14px;color:#495057;font-weight:600;">${Number(integral.value).toFixed(6)}</span></div>`);
         }
         
         if (parts.length > 0) {
@@ -469,7 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             
-            // Add shaded integral area if exists (only in cartesian)
+            // Add shaded integral area if exists (cartesian)
             if (!resultPayload.polar && currentIntegralTrace) {
                 if (Array.isArray(currentIntegralTrace)) {
                     // push all integral shading traces
@@ -477,6 +498,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     traces.push(currentIntegralTrace);
                 }
+            }
+            // Add polar wedge shading if exists (polar)
+            if (resultPayload.polar && currentPolarIntegralTraces) {
+                if (Array.isArray(currentPolarIntegralTraces)) {
+                    traces.push(...currentPolarIntegralTraces);
+                } else {
+                    traces.push(currentPolarIntegralTraces);
+                }
+            }
+            // Add parametric highlight if exists (parametric)
+            if (resultPayload.mode === 'parametric' && currentParametricHighlightTrace) {
+                traces.push(currentParametricHighlightTrace);
             }
             
             // Add loaded data points if exist (for curve fitting)
@@ -1038,48 +1071,93 @@ document.addEventListener('DOMContentLoaded', () => {
             plotButton.click();
         });
     }
+    // Show integral value label toggle - refresh when changed
+    const showIntegralLabel = document.getElementById('showIntegralLabel');
+    if (showIntegralLabel) {
+        showIntegralLabel.addEventListener('change', () => {
+            // Rebuild current visualization if any
+            const modeEl = document.getElementById('plotMode');
+            const mode = (modeEl && modeEl.value) || 'cartesian';
+            if (currentAnalysisData.integral) {
+                if (mode === 'cartesian' && currentAnalysisData.integral.a != null && currentAnalysisData.integral.b != null) {
+                    // rebuild cartesian shading to include/exclude label (value is added in annotations later)
+                    const expression = functionInput.value;
+                    createIntegralShading(expression, currentAnalysisData.integral.a, currentAnalysisData.integral.b);
+                } else {
+                    // For polar/parametric, just trigger a replot so label is applied via traces
+                    plotButton.click();
+                }
+            } else {
+                plotButton.click();
+            }
+        });
+    }
     
-    // Calculate integral button handler
+    // Calculate integral button handler - supports all modes
     if (calculateIntegralButton && calcWorker) {
         calculateIntegralButton.addEventListener('click', () => {
-            const mode = (plotMode && plotMode.value) || 'cartesian';
-            if (mode !== 'cartesian') {
-                errorDisplay.textContent = 'Całki są dostępne tylko w trybie kartezjańskim';
-                return;
-            }
-            
-            const expression = functionInput.value;
-            if (!expression || expression.trim() === '') {
-                errorDisplay.textContent = 'Wprowadź funkcję przed obliczeniem całki';
-                return;
-            }
-            
+            const modeEl = document.getElementById('plotMode');
+            const mode = (modeEl && modeEl.value) || 'cartesian';
+
+            // Read generic bounds a,b (used as: x-bounds for cartesian, t-bounds for parametric/polar)
             const a = parseFloat(integralA.value);
             const b = parseFloat(integralB.value);
-            
             if (!isFinite(a) || !isFinite(b) || a >= b) {
                 errorDisplay.textContent = 'Nieprawidłowe granice całki (a < b)';
                 return;
             }
-            
+
+            // Reset previous cartesian shading if switching modes
+            if (mode !== 'cartesian') {
+                currentIntegralTrace = null;
+                currentIntegralShapes = null;
+                currentIntegralAnnotations = null;
+            }
+
             errorDisplay.textContent = 'Obliczanie całki...';
-            
-            // Send integral calculation to worker
+
             const integralListener = (ev) => {
                 const msg = ev.data;
                 if (!msg) return;
-                
+
                 if (msg.type === 'integralResult') {
-                    currentAnalysisData.integral = {
-                        value: msg.payload.value,
-                        a: msg.payload.a,
-                        b: msg.payload.b
-                    };
-                    
-                    // Create shaded area trace
-                    createIntegralShading(expression, a, b);
-                    
-                    // Update display
+                    const payload = msg.payload || {};
+                    // Preserve display bounds for parametric/polar when angle mode = degrees
+                    if (mode === 'parametric' || mode === 'polar') {
+                        const angleModeEl = document.getElementById('angleMode');
+                        const angleModeVal = angleModeEl ? angleModeEl.value : 'radians';
+                        if (angleModeVal === 'degrees') {
+                            // Override a,b for display with degree inputs
+                            payload.a = a;
+                            payload.b = b;
+                            payload.unit = 'degrees';
+                        } else {
+                            payload.unit = 'radians';
+                        }
+                    }
+                    currentAnalysisData.integral = Object.assign({ mode }, payload);
+
+                    // Visualization per mode
+                    if (mode === 'cartesian') {
+                        const expression = functionInput.value;
+                        createIntegralShading(expression, a, b);
+                    } else if (mode === 'polar') {
+                        const angleModeEl = document.getElementById('angleMode');
+                        const angleModeVal = angleModeEl ? angleModeEl.value : 'radians';
+                        const aRad = (angleModeVal === 'degrees') ? a * Math.PI / 180 : a;
+                        const bRad = (angleModeVal === 'degrees') ? b * Math.PI / 180 : b;
+                        createPolarIntegralShading(payload.rExpr, aRad, bRad);
+                    } else if (mode === 'parametric') {
+                        const angleModeEl = document.getElementById('angleMode');
+                        const angleModeVal = angleModeEl ? angleModeEl.value : 'radians';
+                        const aRad = (angleModeVal === 'degrees') ? a * Math.PI / 180 : a;
+                        const bRad = (angleModeVal === 'degrees') ? b * Math.PI / 180 : b;
+                        createParametricIntegralHighlight((xParamInput && xParamInput.value) || '', (yParamInput && yParamInput.value) || '', aRad, bRad);
+                    } else {
+                        // Trigger a replot to clear any old decorations
+                        plotButton.click();
+                    }
+
                     displayAnalysisResults();
                     errorDisplay.textContent = '';
                     calcWorker.removeEventListener('message', integralListener);
@@ -1088,17 +1166,73 @@ document.addEventListener('DOMContentLoaded', () => {
                     calcWorker.removeEventListener('message', integralListener);
                 }
             };
-            
+
             calcWorker.addEventListener('message', integralListener);
-            calcWorker.postMessage({
-                type: 'computeIntegral',
-                payload: {
-                    expression,
-                    a,
-                    b,
-                    scope: collectScope()
+
+            // Build payload per mode
+            if (mode === 'cartesian') {
+                const expression = functionInput.value;
+                if (!expression || expression.trim() === '') {
+                    errorDisplay.textContent = 'Wprowadź funkcję przed obliczeniem całki';
+                    calcWorker.removeEventListener('message', integralListener);
+                    return;
                 }
-            });
+                calcWorker.postMessage({
+                    type: 'computeIntegral',
+                    payload: { mode: 'cartesian', expression, a, b, scope: collectScope() }
+                });
+            } else if (mode === 'parametric') {
+                const xExpr = (xParamInput && xParamInput.value) || '';
+                const yExpr = (yParamInput && yParamInput.value) || '';
+                if (!xExpr || !yExpr) {
+                    errorDisplay.textContent = 'Wprowadź x(t) i y(t)';
+                    calcWorker.removeEventListener('message', integralListener);
+                    return;
+                }
+                const angleModeEl = document.getElementById('angleMode');
+                const angleModeVal = angleModeEl ? angleModeEl.value : 'radians';
+                const aRad = (angleModeVal === 'degrees') ? a * Math.PI / 180 : a;
+                const bRad = (angleModeVal === 'degrees') ? b * Math.PI / 180 : b;
+                calcWorker.postMessage({
+                    type: 'computeIntegral',
+                    payload: { mode: 'parametric', xExpr, yExpr, a: aRad, b: bRad, scope: collectScope() }
+                });
+            } else if (mode === 'polar') {
+                const rExpr = (rInput && rInput.value) || '';
+                if (!rExpr) {
+                    errorDisplay.textContent = 'Wprowadź r(t)';
+                    calcWorker.removeEventListener('message', integralListener);
+                    return;
+                }
+                const angleModeEl = document.getElementById('angleMode');
+                const angleModeVal = angleModeEl ? angleModeEl.value : 'radians';
+                const aRad = (angleModeVal === 'degrees') ? a * Math.PI / 180 : a;
+                const bRad = (angleModeVal === 'degrees') ? b * Math.PI / 180 : b;
+                calcWorker.postMessage({
+                    type: 'computeIntegral',
+                    payload: { mode: 'polar', rExpr, a: aRad, b: bRad, scope: collectScope() }
+                });
+            } else if (mode === '3d') {
+                const surfaceInput = document.getElementById('surfaceInput');
+                const xMin3D = parseFloat(document.getElementById('xMin3D').value);
+                const xMax3D = parseFloat(document.getElementById('xMax3D').value);
+                const yMin3D = parseFloat(document.getElementById('yMin3D').value);
+                const yMax3D = parseFloat(document.getElementById('yMax3D').value);
+                if (!surfaceInput || !surfaceInput.value.trim()) {
+                    errorDisplay.textContent = 'Wprowadź funkcję z(x,y)';
+                    calcWorker.removeEventListener('message', integralListener);
+                    return;
+                }
+                if (!isFinite(xMin3D) || !isFinite(xMax3D) || xMin3D >= xMax3D || !isFinite(yMin3D) || !isFinite(yMax3D) || yMin3D >= yMax3D) {
+                    errorDisplay.textContent = 'Niepoprawny zakres X/Y dla 3D';
+                    calcWorker.removeEventListener('message', integralListener);
+                    return;
+                }
+                calcWorker.postMessage({
+                    type: 'computeIntegral',
+                    payload: { mode: '3d', expr: surfaceInput.value, xRange: { min: xMin3D, max: xMax3D }, yRange: { min: yMin3D, max: yMax3D }, scope: collectScope() }
+                });
+            }
         });
     }
     
@@ -1255,6 +1389,134 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (err) {
             errorDisplay.textContent = `Błąd cieniowania: ${err.message}`;
+        }
+    }
+
+    // Create polar wedge shading for ½ ∫ r(θ)^2 dθ over [a,b]
+    function createPolarIntegralShading(rExpr, aRad, bRad) {
+        try {
+            const nodeR = math.parse(rExpr);
+            const compiledR = nodeR.compile();
+            const scope = collectScope();
+            const steps = 180;
+            const dt = (bRad - aRad) / steps;
+            const theta = [];
+            const r = [];
+
+            // Start at origin on θ=a
+            theta.push((aRad * 180) / Math.PI);
+            r.push(0);
+
+            for (let i = 0; i <= steps; i++) {
+                const t = aRad + i * dt;
+                let rv = null;
+                try {
+                    const v = compiledR.evaluate(Object.assign({ t }, scope));
+                    rv = isFinite(v) ? Math.max(0, v) : null; // non-negative radius for wedge
+                } catch (e) {
+                    rv = null;
+                }
+                theta.push((t * 180) / Math.PI);
+                r.push(rv);
+            }
+
+            // Return to origin on θ=b
+            theta.push((bRad * 180) / Math.PI);
+            r.push(0);
+
+            const wedgeTrace = {
+                type: 'scatterpolar',
+                theta,
+                r,
+                mode: 'lines',
+                fill: 'toself',
+                fillcolor: 'rgba(100,150,255,0.25)',
+                line: { width: 0 },
+                name: 'Obszar całki (polar)',
+                showlegend: false,
+                hoverinfo: 'skip'
+            };
+
+            // Optional label marker inside wedge if enabled
+            const showLabelEl = document.getElementById('showIntegralLabel');
+            const showLabel = showLabelEl ? showLabelEl.checked : false;
+            const extraTraces = [wedgeTrace];
+            if (showLabel && currentAnalysisData.integral && Number.isFinite(currentAnalysisData.integral.value)) {
+                const mid = (aRad + bRad) / 2;
+                // find a reasonable radius for label (half of max r in the wedge)
+                const maxR = r.reduce((m, v) => (isFinite(v) && v > m ? v : m), 0);
+                const labelR = maxR * 0.5;
+                extraTraces.push({
+                    type: 'scatterpolar',
+                    theta: [(mid * 180) / Math.PI],
+                    r: [labelR],
+                    mode: 'text',
+                    text: [`∫ = ${Number(currentAnalysisData.integral.value).toFixed(4)}`],
+                    textposition: 'middle center',
+                    textfont: { size: 12, color: '#2c3e50' },
+                    showlegend: false,
+                });
+            }
+
+            currentPolarIntegralTraces = extraTraces;
+            // Redraw plot with wedge shading
+            plotButton.click();
+        } catch (err) {
+            errorDisplay.textContent = `Błąd cieniowania (polar): ${err.message}`;
+        }
+    }
+
+    // Create parametric segment highlight for t in [a,b]
+    function createParametricIntegralHighlight(xExpr, yExpr, aRad, bRad) {
+        try {
+            const nodeX = math.parse(xExpr);
+            const nodeY = math.parse(yExpr);
+            const compiledX = nodeX.compile();
+            const compiledY = nodeY.compile();
+            const scope = collectScope();
+            const steps = 300;
+            const dt = (bRad - aRad) / steps;
+            const xs = [];
+            const ys = [];
+            for (let i = 0; i <= steps; i++) {
+                const t = aRad + i * dt;
+                let xv = null, yv = null;
+                try { xv = compiledX.evaluate(Object.assign({ t }, scope)); } catch (e) { xv = null; }
+                try { yv = compiledY.evaluate(Object.assign({ t }, scope)); } catch (e) { yv = null; }
+                xs.push(isFinite(xv) ? xv : null);
+                ys.push(isFinite(yv) ? yv : null);
+            }
+            currentParametricHighlightTrace = {
+                x: xs,
+                y: ys,
+                type: 'scatter',
+                mode: 'lines',
+                line: { width: 5, color: 'rgba(100,150,255,0.9)' },
+                name: 'Odcinek całki',
+                showlegend: false,
+                connectgaps: false
+            };
+
+            // Optional label at mid-point if enabled
+            const showLabelEl = document.getElementById('showIntegralLabel');
+            const showLabel = showLabelEl ? showLabelEl.checked : false;
+            if (showLabel && currentAnalysisData.integral && Number.isFinite(currentAnalysisData.integral.value)) {
+                const tMid = (aRad + bRad) / 2;
+                let xm = null, ym = null;
+                try { xm = nodeX.compile().evaluate(Object.assign({ t: tMid }, scope)); } catch (e) { }
+                try { ym = nodeY.compile().evaluate(Object.assign({ t: tMid }, scope)); } catch (e) { }
+                if (isFinite(xm) && isFinite(ym)) {
+                    // Add small text marker as a separate trace
+                    currentParametricHighlightTrace.text = [`∫ = ${Number(currentAnalysisData.integral.value).toFixed(4)}`];
+                    currentParametricHighlightTrace.mode = 'lines+text';
+                    currentParametricHighlightTrace.textposition = 'top center';
+                    currentParametricHighlightTrace.textfont = { size: 12, color: '#2c3e50' };
+                }
+            }
+
+            plotButton.click();
+        } catch (err) {
+            errorDisplay.textContent = `Błąd wyróżnienia (param): ${err.message}`;
         }
     }
     
