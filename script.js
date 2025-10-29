@@ -1,10 +1,23 @@
 // Global variables for data traces
 let loadedDataTrace = null; // Trace dla importowanych danych 2D (CSV/API)
 let loadedData3DTrace = null; // Trace dla importowanych danych 3D (CSV/API)
+let currentAnalysisData = { zeros: [], extrema: [], intersections: [], integral: null, derivative: '' }; // Initialize early for 3D access
 
 // Funkcja do renderowania wykresu 3D
 function handle3DPlot(data) {
     console.log('Otrzymane dane 3D:', data);
+    
+    // Store derivative info if present and non-empty
+    if (data.derivative && typeof currentAnalysisData !== 'undefined') {
+        // Check if derivative has actual values
+        if ((data.derivative.dzDx && data.derivative.dzDy) || 
+            (typeof data.derivative === 'string' && data.derivative.trim() !== '')) {
+            currentAnalysisData.derivative = data.derivative;
+            if (typeof displayAnalysisResults === 'function') {
+                displayAnalysisResults();
+            }
+        }
+    }
     
     // Sprawdź, czy dane są poprawne
     if (!data.x || !data.y || !data.z || !Array.isArray(data.z)) {
@@ -269,6 +282,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (plotMode) {
         plotMode.addEventListener('change', (e) => {
             updateModeUI(e.target.value);
+            // Clear all analysis data when mode changes
+            clearAllAnalysisData();
+            // Trigger replot to clear visualization
+            if (plotButton) plotButton.click();
         });
         // Inicjalizacja przy załadowaniu
         updateModeUI(plotMode.value);
@@ -305,6 +322,112 @@ document.addEventListener('DOMContentLoaded', () => {
         if (parametricInputs) parametricInputs.style.display = (mode === 'parametric') ? 'block' : 'none';
         if (polarInputs) polarInputs.style.display = (mode === 'polar') ? 'block' : 'none';
         if (cartesianInputs) cartesianInputs.style.display = (mode === 'cartesian') ? 'block' : 'none';
+            
+            // Show/hide analysis checkboxes based on mode
+            const zerosCheckbox = document.getElementById('zerosCheckbox');
+            const extremaCheckbox = document.getElementById('extremaCheckbox');
+            const intersectionsCheckbox = document.getElementById('intersectionsCheckbox');
+            const derivativePlotCheckbox = document.getElementById('derivativePlotCheckbox');
+            const integralControls = document.querySelector('.integral-controls');
+            
+            if (mode === 'cartesian') {
+                // Cartesian: all analysis options available
+                if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'block';
+                if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'block';
+                if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'block';
+                if (derivativePlotCheckbox) {
+                    derivativePlotCheckbox.parentElement.style.display = 'block';
+                    updateDerivativeLabel(derivativePlotCheckbox, 'Rysuj/licz pochodną f\'(x)');
+                }
+                if (integralControls) {
+                    integralControls.style.display = 'block';
+                    updateIntegralLabel(mode);
+                }
+            } else if (mode === 'parametric') {
+                // Parametric: derivative and curve integral available
+                if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
+                if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
+                if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
+                if (derivativePlotCheckbox) {
+                    derivativePlotCheckbox.parentElement.style.display = 'block';
+                    updateDerivativeLabel(derivativePlotCheckbox, 'Rysuj/licz dx/dt, dy/dt');
+                }
+                if (integralControls) {
+                    integralControls.style.display = 'block';
+                    updateIntegralLabel(mode);
+                }
+            } else if (mode === 'polar') {
+                // Polar: derivative and polar area integral available
+                if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
+                if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
+                if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
+                if (derivativePlotCheckbox) {
+                    derivativePlotCheckbox.parentElement.style.display = 'block';
+                    updateDerivativeLabel(derivativePlotCheckbox, 'Rysuj/licz dr/dθ');
+                }
+                if (integralControls) {
+                    integralControls.style.display = 'block';
+                    updateIntegralLabel(mode);
+                }
+            } else if (mode === '3d') {
+                // 3D: derivative disabled
+                if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
+                if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
+                if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
+                if (derivativePlotCheckbox) derivativePlotCheckbox.parentElement.style.display = 'none';
+                if (integralControls) integralControls.style.display = 'none';
+            }
+            
+            // Helper function to update derivative checkbox label
+            function updateDerivativeLabel(checkbox, newText) {
+                const label = checkbox.parentElement;
+                // Find and update all text nodes (replace them with new text)
+                let textNodeFound = false;
+                for (let i = label.childNodes.length - 1; i >= 0; i--) {
+                    if (label.childNodes[i].nodeType === Node.TEXT_NODE) {
+                        if (!textNodeFound) {
+                            // Replace first text node found (starting from end)
+                            label.childNodes[i].textContent = '\u00A0' + newText;
+                            textNodeFound = true;
+                        } else {
+                            // Remove any additional text nodes
+                            label.removeChild(label.childNodes[i]);
+                        }
+                    }
+                }
+            }
+            
+            // Helper function to update integral section labels based on mode
+            function updateIntegralLabel(mode) {
+                const integralLabel = document.querySelector('.integral-controls label[for="integralA"]');
+                const integralButton = document.getElementById('calculateIntegralButton');
+                
+                if (mode === 'cartesian') {
+                    if (integralLabel && integralLabel.previousElementSibling) {
+                        integralLabel.previousElementSibling.textContent = 'Całka oznaczona:';
+                    }
+                    if (integralButton) {
+                        integralButton.textContent = 'Oblicz i zacieniuj';
+                    }
+                } else if (mode === 'parametric') {
+                    const labelElement = document.querySelector('.integral-controls > label');
+                    if (labelElement) {
+                        labelElement.textContent = 'Całka krzywoliniowa (t):';
+                    }
+                    if (integralButton) {
+                        integralButton.textContent = 'Oblicz długość krzywej';
+                    }
+                } else if (mode === 'polar') {
+                    const labelElement = document.querySelector('.integral-controls > label');
+                    if (labelElement) {
+                        labelElement.textContent = 'Pole obszaru (θ):';
+                    }
+                    if (integralButton) {
+                        integralButton.textContent = 'Oblicz pole';
+                    }
+                }
+            }
+            
             // rebuild param controls for the newly selected mode (paramsUpdater is defined later)
             try {
                 if (typeof paramsUpdater !== 'undefined' && paramsUpdater) paramsUpdater();
@@ -367,7 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentIntegralTrace = null; // track shaded integral area (can be a single trace or an array of traces)
     let currentIntegralShapes = null; // layout shapes for integral (band + boundaries)
     let currentIntegralAnnotations = null; // layout annotations for integral (labels a, b)
-    let currentAnalysisData = { zeros: [], extrema: [], intersections: [], integral: null }; // store for display
+    // currentAnalysisData is now declared globally at top of file for 3D access
     let currentPolarIntegralTraces = null; // polar wedge and optional label marker
     let currentParametricHighlightTrace = null; // highlighted segment for t in [a,b]
     
@@ -387,8 +510,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const { zeros, extrema, integral, intersections, derivative } = currentAnalysisData;
         const parts = [];
         
+        // Display derivative formulas based on mode
         if (derivative) {
-            parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Pochodna f₁(x):</strong><br><span style="font-size:13px;color:#495057;font-family:Consolas,monospace;">f'(x) = ${derivative}</span></div>`);
+            if (derivative.dx && derivative.dy) {
+                // Parametric mode
+                parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Pochodne parametryczne:</strong><br><span style="font-size:13px;color:#495057;font-family:Consolas,monospace;">dx/dt = ${derivative.dx}<br>dy/dt = ${derivative.dy}</span></div>`);
+            } else if (derivative.dzDx && derivative.dzDy) {
+                // 3D mode
+                parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Pochodne cząstkowe:</strong><br><span style="font-size:13px;color:#495057;font-family:Consolas,monospace;">∂z/∂x = ${derivative.dzDx}<br>∂z/∂y = ${derivative.dzDy}</span></div>`);
+            } else if (typeof derivative === 'string' && derivative.trim() !== '') {
+                // String derivative: need to determine if cartesian or polar by checking current mode
+                const modeEl = document.getElementById('plotMode');
+                const currentMode = modeEl ? modeEl.value : 'cartesian';
+                
+                if (currentMode === 'polar') {
+                    // Polar mode
+                    parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Pochodna biegunowa:</strong><br><span style="font-size:13px;color:#495057;font-family:Consolas,monospace;">dr/dθ = ${derivative}</span></div>`);
+                } else if (currentMode === 'cartesian') {
+                    // Cartesian mode
+                    parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Pochodna f₁(x):</strong><br><span style="font-size:13px;color:#495057;font-family:Consolas,monospace;">f'(x) = ${derivative}</span></div>`);
+                }
+            }
         }
         
         if (zeros && zeros.length > 0) {
@@ -540,10 +682,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 traces.push(currentParametricHighlightTrace);
             }
             // Add derivative plot if requested and provided
-            if (resultPayload.mode === 'cartesian') {
-                const derivativeCheckbox = document.getElementById('derivativePlotCheckbox');
-                const showDeriv = derivativeCheckbox ? derivativeCheckbox.checked : false;
-                if (showDeriv && resultPayload.derivativeSamples && resultPayload.derivativeSamples.x && resultPayload.derivativeSamples.y) {
+            const derivativeCheckbox = document.getElementById('derivativePlotCheckbox');
+            const showDeriv = derivativeCheckbox ? derivativeCheckbox.checked : false;
+            
+            if (resultPayload.mode === 'cartesian' && showDeriv) {
+                if (resultPayload.derivativeSamples && resultPayload.derivativeSamples.x && resultPayload.derivativeSamples.y) {
                     traces.push({
                         x: resultPayload.derivativeSamples.x,
                         y: resultPayload.derivativeSamples.y,
@@ -551,6 +694,42 @@ document.addEventListener('DOMContentLoaded', () => {
                         name: "f'(x)",
                         line: { color: 'rgb(123, 31, 162)', width: 2, dash: 'dash' },
                         connectgaps: false
+                    });
+                }
+            } else if (resultPayload.mode === 'parametric' && showDeriv) {
+                // Plot dx/dt and dy/dt vs t
+                if (resultPayload.derivativeSamplesX && resultPayload.derivativeSamplesX.t) {
+                    traces.push({
+                        x: resultPayload.derivativeSamplesX.t,
+                        y: resultPayload.derivativeSamplesX.value,
+                        mode: 'lines',
+                        name: "dx/dt",
+                        line: { color: 'rgb(123, 31, 162)', width: 2, dash: 'dash' },
+                        connectgaps: false,
+                        yaxis: 'y2'
+                    });
+                }
+                if (resultPayload.derivativeSamplesY && resultPayload.derivativeSamplesY.t) {
+                    traces.push({
+                        x: resultPayload.derivativeSamplesY.t,
+                        y: resultPayload.derivativeSamplesY.value,
+                        mode: 'lines',
+                        name: "dy/dt",
+                        line: { color: 'rgb(156, 39, 176)', width: 2, dash: 'dot' },
+                        connectgaps: false,
+                        yaxis: 'y2'
+                    });
+                }
+            } else if (resultPayload.mode === 'polar' && showDeriv && resultPayload.polar) {
+                // Plot dr/dt on polar chart
+                if (resultPayload.derivativeSamplesR && resultPayload.derivativeSamplesR.theta) {
+                    traces.push({
+                        r: resultPayload.derivativeSamplesR.value,
+                        theta: resultPayload.derivativeSamplesR.theta,
+                        mode: 'lines',
+                        type: 'scatterpolar',
+                        name: "dr/dθ",
+                        line: { color: 'rgb(123, 31, 162)', width: 2, dash: 'dash' }
                     });
                 }
             }
@@ -1048,14 +1227,71 @@ document.addEventListener('DOMContentLoaded', () => {
         buildParamControls(Array.from(set));
     }, 300);
 
+    // Helper function to clear all analysis visualizations
+    function clearAllAnalysisData() {
+        // Clear integral visualizations
+        currentIntegralTrace = null;
+        currentIntegralShapes = null;
+        currentIntegralAnnotations = null;
+        currentPolarIntegralTraces = null;
+        currentParametricHighlightTrace = null;
+        // Clear all analysis data
+        currentAnalysisData.zeros = [];
+        currentAnalysisData.extrema = [];
+        currentAnalysisData.intersections = [];
+        currentAnalysisData.integral = null;
+        currentAnalysisData.derivative = '';
+        // Hide analysis results panel
+        if (analysisResults) {
+            analysisResults.style.display = 'none';
+        }
+        if (analysisResultsContent) {
+            analysisResultsContent.innerHTML = '';
+        }
+    }
+
+    // Debounced plot refresh for function input changes
+    let functionInputTimeout;
+    function triggerDebouncedPlot() {
+        clearTimeout(functionInputTimeout);
+        functionInputTimeout = setTimeout(() => {
+            if (plotButton) plotButton.click();
+        }, 1000); // 1 second debounce
+    }
+
     // Wire inputs so changing expressions updates detected parameters
-    functionInput.addEventListener('input', paramsUpdater);
-    if (function2Input) function2Input.addEventListener('input', paramsUpdater);
-    if (xParamInput) xParamInput.addEventListener('input', paramsUpdater);
-    if (yParamInput) yParamInput.addEventListener('input', paramsUpdater);
-    if (rInput) rInput.addEventListener('input', paramsUpdater);
+    functionInput.addEventListener('input', () => {
+        paramsUpdater();
+        // Clear all analysis data when function changes
+        clearAllAnalysisData();
+        triggerDebouncedPlot();
+    });
+    if (function2Input) function2Input.addEventListener('input', () => {
+        paramsUpdater();
+        clearAllAnalysisData();
+        triggerDebouncedPlot();
+    });
+    if (xParamInput) xParamInput.addEventListener('input', () => {
+        paramsUpdater();
+        clearAllAnalysisData();
+        triggerDebouncedPlot();
+    });
+    if (yParamInput) yParamInput.addEventListener('input', () => {
+        paramsUpdater();
+        clearAllAnalysisData();
+        triggerDebouncedPlot();
+    });
+    if (rInput) rInput.addEventListener('input', () => {
+        paramsUpdater();
+        clearAllAnalysisData();
+        triggerDebouncedPlot();
+    });
     const surfaceInputEl = document.getElementById('surfaceInput');
-    if (surfaceInputEl) surfaceInputEl.addEventListener('input', paramsUpdater);
+    if (surfaceInputEl) surfaceInputEl.addEventListener('input', () => {
+        paramsUpdater();
+        clearAllAnalysisData();
+        triggerDebouncedPlot();
+    });
     // initialize params for current mode/input
     paramsUpdater();
 
@@ -1122,6 +1358,60 @@ document.addEventListener('DOMContentLoaded', () => {
             plotButton.click();
         });
     }
+    
+    // Auto-refresh when analysis checkboxes change
+    const zerosCheckbox = document.getElementById('zerosCheckbox');
+    if (zerosCheckbox) {
+        zerosCheckbox.addEventListener('change', () => {
+            plotButton.click();
+        });
+    }
+    
+    const extremaCheckbox = document.getElementById('extremaCheckbox');
+    if (extremaCheckbox) {
+        extremaCheckbox.addEventListener('change', () => {
+            plotButton.click();
+        });
+    }
+    
+    const intersectionsCheckbox = document.getElementById('intersectionsCheckbox');
+    if (intersectionsCheckbox) {
+        intersectionsCheckbox.addEventListener('change', () => {
+            plotButton.click();
+        });
+    }
+    
+    // Auto-refresh when integral bounds change (with debounce)
+    let integralUpdateTimeout;
+    const autoRefreshIntegral = () => {
+        clearTimeout(integralUpdateTimeout);
+        integralUpdateTimeout = setTimeout(() => {
+            // Only auto-refresh if we have valid bounds and button exists
+            const a = parseNumberInput(integralA.value);
+            const b = parseNumberInput(integralB.value);
+            if (isFinite(a) && isFinite(b) && a < b && calculateIntegralButton) {
+                // Trigger the integral calculation
+                calculateIntegralButton.click();
+            }
+        }, 800); // 800ms debounce to avoid too many calculations
+    };
+    
+    if (integralA) {
+        integralA.addEventListener('input', autoRefreshIntegral);
+        integralA.addEventListener('change', () => {
+            clearTimeout(integralUpdateTimeout);
+            if (calculateIntegralButton) calculateIntegralButton.click();
+        });
+    }
+    
+    if (integralB) {
+        integralB.addEventListener('input', autoRefreshIntegral);
+        integralB.addEventListener('change', () => {
+            clearTimeout(integralUpdateTimeout);
+            if (calculateIntegralButton) calculateIntegralButton.click();
+        });
+    }
+    
     // Show integral value label toggle - refresh when changed
     const showIntegralLabel = document.getElementById('showIntegralLabel');
     if (showIntegralLabel) {
@@ -1164,8 +1454,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentIntegralShapes = null;
                 currentIntegralAnnotations = null;
             }
+            // Reset polar/parametric traces if switching modes
+            if (mode !== 'polar') {
+                currentPolarIntegralTraces = null;
+            }
+            if (mode !== 'parametric') {
+                currentParametricHighlightTrace = null;
+            }
 
             errorDisplay.textContent = 'Obliczanie całki...';
+
+            // Use a temporary worker for integral to isolate responses
+            const integralWorker = new Worker('calculator-worker.js');
 
             const integralListener = (ev) => {
                 const msg = ev.data;
@@ -1193,11 +1493,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         const expression = functionInput.value;
                         createIntegralShading(expression, a, b);
                     } else if (mode === 'polar') {
-                        const angleModeEl = document.getElementById('angleMode');
-                        const angleModeVal = angleModeEl ? angleModeEl.value : 'radians';
-                        const aRad = (angleModeVal === 'degrees') ? a * Math.PI / 180 : a;
-                        const bRad = (angleModeVal === 'degrees') ? b * Math.PI / 180 : b;
-                        createPolarIntegralShading(payload.rExpr, aRad, bRad);
+                        // Do not draw polar integral area shading
+                        currentPolarIntegralTraces = null;
+                        // Refresh plot to ensure previous shading is cleared
+                        plotButton.click();
                     } else if (mode === 'parametric') {
                         const angleModeEl = document.getElementById('angleMode');
                         const angleModeVal = angleModeEl ? angleModeEl.value : 'radians';
@@ -1211,14 +1510,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     displayAnalysisResults();
                     errorDisplay.textContent = '';
-                    calcWorker.removeEventListener('message', integralListener);
+                    integralWorker.removeEventListener('message', integralListener);
+                    try { integralWorker.terminate(); } catch (_) {}
                 } else if (msg.type === 'error') {
                     errorDisplay.textContent = msg.payload.message;
-                    calcWorker.removeEventListener('message', integralListener);
+                    integralWorker.removeEventListener('message', integralListener);
+                    try { integralWorker.terminate(); } catch (_) {}
                 }
             };
 
-            calcWorker.addEventListener('message', integralListener);
+            integralWorker.addEventListener('message', integralListener);
 
             // Build payload per mode
             if (mode === 'cartesian') {
@@ -2059,6 +2360,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Delegate heavy computation to worker (if available)
             const plotDiv = myChartCanvas; // myChartCanvas jest elementem DOM (zamieniliśmy canvas na div)
+            if (calcWorker) {
+                // Always use a fresh worker for compute to avoid late responses from older tasks
+                try { calcWorker.terminate(); } catch (_) {}
+                try { calcWorker = new Worker('calculator-worker.js'); } catch (e) {
+                    console.warn('Nie udało się utworzyć Web Workera:', e);
+                    calcWorker = null;
+                }
+            }
             if (calcWorker) {
                 // show temporary status
                 errorDisplay.textContent = 'Obliczanie...';
