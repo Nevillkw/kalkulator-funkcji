@@ -494,6 +494,7 @@ self.onmessage = function (ev) {
 			// Compute zeros and extrema for f1 if requested
 			let zeros = [];
 			let extrema = [];
+			let derivString = '';
 			if (calculateZeros) {
 				const zeroNode = math.parse('0');
 				const compiledZero = zeroNode.compile();
@@ -502,20 +503,51 @@ self.onmessage = function (ev) {
 			if (calculateExtrema) {
 				try {
 					const derivNode = math.derivative(expression, 'x');
+					try { derivString = derivNode.toString(); } catch (e) { derivString = ''; }
 					const compiledDeriv = derivNode.compile();
 					const zeroNode = math.parse('0');
 					const compiledZero = zeroNode.compile();
 					// Find roots of derivative == 0 (extrema)
 					extrema = findIntersections(compiledDeriv, compiledZero, xMin, xMax, yMin, yMax, opts.segments || 400, opts, scope);
-					// For extrema we want the y value on the original function
-					extrema = extrema.map(p => ({ x: p.x, y: safeEval(compiled1, p.x, scope) }));
+					// Second derivative for classification
+					let compiledSecond = null;
+					try {
+						const secondNode = math.derivative(derivNode, 'x');
+						compiledSecond = secondNode.compile();
+					} catch (_) { compiledSecond = null; }
+					const EPS = 1e-6;
+					// For extrema we want the y value on the original function and a type based on f''(x)
+					extrema = extrema.map(p => {
+						const yVal = safeEval(compiled1, p.x, scope);
+						let type = 'unknown';
+						let f2 = NaN;
+						if (compiledSecond) {
+							try { f2 = compiledSecond.evaluate(Object.assign({ x: p.x }, scope)); } catch (_) { f2 = NaN; }
+							if (isFinite(f2)) {
+								if (f2 > EPS) type = 'min';
+								else if (f2 < -EPS) type = 'max';
+								else type = 'flat';
+							}
+						}
+						return { x: p.x, y: yVal, type, f2 };
+					});
 				} catch (e) {
 					// If derivative parsing failed, leave extrema empty
 					extrema = [];
 				}
 			}
 
-			self.postMessage({ type: 'result', payload: { mode: 'cartesian', samples1, samples2, intersections, zeros, extrema } });
+			// Optionally compute derivative samples for plotting
+			let derivativeSamples = null;
+			if (msg.payload && msg.payload.calculateDerivativePlot) {
+				try {
+					const derivNode = math.derivative(expression, 'x');
+					const compiledDeriv = derivNode.compile();
+					derivativeSamples = generateSamples(compiledDeriv, xMin, xMax, initialPoints || 50, opts, scope);
+				} catch (_) { derivativeSamples = null; }
+			}
+
+			self.postMessage({ type: 'result', payload: { mode: 'cartesian', samples1, samples2, intersections, zeros, extrema, derivative: derivString, derivativeSamples } });
 			return;
 		}
 

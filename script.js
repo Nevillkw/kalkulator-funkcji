@@ -384,8 +384,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayAnalysisResults() {
         if (!analysisResults || !analysisResultsContent) return;
         
-        const { zeros, extrema, integral, intersections } = currentAnalysisData;
+        const { zeros, extrema, integral, intersections, derivative } = currentAnalysisData;
         const parts = [];
+        
+        if (derivative) {
+            parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Pochodna f₁(x):</strong><br><span style="font-size:13px;color:#495057;font-family:Consolas,monospace;">f'(x) = ${derivative}</span></div>`);
+        }
         
         if (zeros && zeros.length > 0) {
             const zerosList = zeros.map(p => `x = ${p.x.toFixed(4)}`).join(', ');
@@ -393,8 +397,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (extrema && extrema.length > 0) {
-            const extremaList = extrema.map(p => `(${p.x.toFixed(4)}, ${p.y.toFixed(4)})`).join(', ');
-            parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Ekstrema:</strong><br><span style="font-size:13px;color:#495057;">${extremaList}</span></div>`);
+            const extremaList = extrema.map(p => {
+                const tag = p.type === 'min' ? 'min' : (p.type === 'max' ? 'max' : 'siodłowy/nieokreślone');
+                return `(${p.x.toFixed(4)}, ${p.y.toFixed(4)}) ${p.type ? '(' + tag + ')' : ''}`;
+            }).join(', ');
+            parts.push(`<div style=\"margin-bottom:10px;line-height:1.6;\"><strong style=\"font-size:14px;color:#2c3e50;\">Ekstrema:</strong><br><span style=\"font-size:13px;color:#495057;\">${extremaList}</span></div>`);
         }
         
         if (intersections && intersections.length > 0) {
@@ -503,9 +510,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 traces.push({
                     x: resultPayload.extrema.map(p => p.x),
                     y: resultPayload.extrema.map(p => p.y),
+                    text: resultPayload.extrema.map(p => (p.type === 'min' ? 'min' : (p.type === 'max' ? 'max' : 'siodłowy/nieokreślone'))),
                     mode: 'markers',
                     name: 'Ekstrema',
-                    marker: { size: 11, color: 'orange', symbol: 'diamond', line: { width: 2, color: 'darkorange' } }
+                    marker: { size: 11, color: 'orange', symbol: 'diamond', line: { width: 2, color: 'darkorange' } },
+                    hovertemplate: 'Ekstremum (%{x:.4f}, %{y:.4f})<br>%{text}<extra></extra>'
                 });
             }
             
@@ -530,6 +539,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (resultPayload.mode === 'parametric' && currentParametricHighlightTrace) {
                 traces.push(currentParametricHighlightTrace);
             }
+            // Add derivative plot if requested and provided
+            if (resultPayload.mode === 'cartesian') {
+                const derivativeCheckbox = document.getElementById('derivativePlotCheckbox');
+                const showDeriv = derivativeCheckbox ? derivativeCheckbox.checked : false;
+                if (showDeriv && resultPayload.derivativeSamples && resultPayload.derivativeSamples.x && resultPayload.derivativeSamples.y) {
+                    traces.push({
+                        x: resultPayload.derivativeSamples.x,
+                        y: resultPayload.derivativeSamples.y,
+                        mode: 'lines',
+                        name: "f'(x)",
+                        line: { color: 'rgb(123, 31, 162)', width: 2, dash: 'dash' },
+                        connectgaps: false
+                    });
+                }
+            }
             
             // Add loaded data points if exist (for curve fitting)
             if (loadedDataTrace) {
@@ -540,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAnalysisData.zeros = resultPayload.zeros || [];
             currentAnalysisData.extrema = resultPayload.extrema || [];
             currentAnalysisData.intersections = resultPayload.intersections || [];
+            currentAnalysisData.derivative = resultPayload.derivative || '';
             displayAnalysisResults();
 
             const xMin = parseNumberInput(xMinInput.value);
@@ -1087,6 +1112,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const piAxisCheckbox = document.getElementById('piAxisCheckbox');
     if (piAxisCheckbox) {
         piAxisCheckbox.addEventListener('change', () => {
+            plotButton.click();
+        });
+    }
+    // Derivative plot toggle - refresh
+    const derivativePlotCheckbox = document.getElementById('derivativePlotCheckbox');
+    if (derivativePlotCheckbox) {
+        derivativePlotCheckbox.addEventListener('change', () => {
             plotButton.click();
         });
     }
@@ -2035,6 +2067,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const zerosChecked = (document.getElementById('zerosCheckbox') || {}).checked;
                 const extremaChecked = (document.getElementById('extremaCheckbox') || {}).checked;
                 const intersectionsChecked = (document.getElementById('intersectionsCheckbox') || {}).checked;
+                const derivativePlotChecked = (document.getElementById('derivativePlotCheckbox') || {}).checked;
                 // Build payload depending on mode
                 const basePayload = {
                     xMin, xMax, yMin, yMax,
@@ -2043,7 +2076,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     calculateZeros: Boolean(zerosChecked),
                     calculateExtrema: Boolean(extremaChecked),
                     calculateIntersections: Boolean(intersectionsChecked),
-                    scope: collectScope()
+                    scope: collectScope(),
+                    calculateDerivativePlot: Boolean(derivativePlotChecked)
                 };
 
                 let payload = Object.assign({}, basePayload);

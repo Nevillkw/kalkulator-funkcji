@@ -7,6 +7,35 @@
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
 }
 
+/* Consistent, centered width for header fieldsets and controls */
+:root {
+    /* Main content width for header fieldsets (Tryb, Funkcje, Renderowanie, button) */
+    --header-content-width: 860px;
+}
+
+.calculator-header h2 {
+    color: #2c3e50;
+    margin: 0 0 12px 0; /* align with sidebar (left) */
+    font-size: 1.8em;
+    font-weight: 700;
+    max-width: var(--header-content-width);
+}
+
+/* Wrap all top fieldsets and the plot button to a common max width */
+.function-input-container {
+    margin: 0 0 15px 0; /* align with sidebar (left) */
+    max-width: var(--header-content-width);
+    width: 100%;
+}
+
+/* Ensure each fieldset in header centers and inherits the common width */
+.calculator-header .ui-group {
+    margin-left: 0;   /* align with sidebar (left) */
+    margin-right: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
 /* UI Groups - Fieldsets & Details */
 .ui-group {
     border: 1px solid #dee2e6;
@@ -108,15 +137,39 @@
     margin-bottom: 15px;
 }
 
-.calculator-header h2 {
-    color: #2c3e50;
-    margin-bottom: 12px;
-    font-size: 1.8em;
-    font-weight: 700;
+.function-input-container button,
+.function-input-container select,
+.function-input-container input,
+.function-input-container textarea {
+    width: 100%;
 }
 
-.function-input-container {
-    margin-bottom: 15px;
+/* Axis grid layouts (responsive) */
+.axes-grid {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+}
+.axes-4 { grid-template-columns: repeat(4, 1fr); }
+.axes-2 { grid-template-columns: repeat(2, 1fr); }
+
+/* Prevent horizontal overflow in constrained containers (e.g., Elementor columns) */
+.calculator-container,
+.calculator-main,
+.calculator-header,
+.function-input-container,
+.ui-group {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+}
+.function-field input,
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .mode-helper {
@@ -137,7 +190,7 @@
     gap: 8px;
     background: #f8f9fa;
     border-radius: 6px;
-    padding: 6px 10px;
+    padding: 2px 2px;
     border: 2px solid #e0e0e0;
     transition: border-color 0.2s ease;
 }
@@ -157,12 +210,12 @@
 
 .function-field input {
     flex: 1;
-    padding: 9px 10px;
+    padding: 2px 2px;
     font-size: 15px;
     border: none;
     font-family: 'Consolas', monospace;
     background: transparent;
-    outline: none;
+    outline: none;;
 }
 
 .function-field input:focus {
@@ -210,7 +263,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px;
+    padding: 2px;
     background: white;
     border-radius: 4px;
     border: 1px solid #e0e0e0;
@@ -219,7 +272,7 @@
 .function-item code, .example-item code {
     flex: 0 0 auto;
     font-weight: 500;
-    min-width: 80px;
+    min-width: 30px;
 }
 
 .function-item span, .example-item span {
@@ -426,6 +479,11 @@ button:hover {
     margin-top: 20px;
     border-top: 1px solid #e0e0e0;
     padding-top: 20px;
+    /* Align and size like top fieldsets */
+    max-width: var(--header-content-width);
+    width: 100%;
+    margin-left: 0;   /* align with sidebar (left) */
+    margin-right: auto;
 }
 
 details {
@@ -581,6 +639,10 @@ code {
     .help-content {
         grid-template-columns: 1fr;
     }
+
+    /* Stack axis inputs to 2 columns on tablets */
+    .axes-4 { grid-template-columns: repeat(2, 1fr); }
+    .axes-2 { grid-template-columns: 1fr 1fr; }
 }
 
 /* Dla bardzo małych ekranów */
@@ -595,5 +657,14 @@ code {
 
     .calculator-header h2 {
         font-size: 1.5em;
+    }
+
+    /* Single column on phones */
+    .axes-4,
+    .axes-2 {
+        grid-template-columns: 1fr;
+    }
+    .calculator-sidebar {
+        width: 100%;
     }
 }

@@ -43,7 +43,7 @@
                         <div class="color-indicator" style="background: rgb(255,99,132)"></div>
                     </div>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:8px;">
+                <div class="axes-grid axes-4">
                     <div><label for="xMin" style="display:block;margin-bottom:4px;">X min:</label><input type="text" id="xMin" value="-10" style="width:100%;" placeholder="np. -2*pi"></div>
                     <div><label for="xMax" style="display:block;margin-bottom:4px;">X max:</label><input type="text" id="xMax" value="10" style="width:100%;" placeholder="np. 2*pi"></div>
                     <div><label for="yMin" style="display:block;margin-bottom:4px;">Y min:</label><input type="text" id="yMin" value="-10" style="width:100%;"></div>
@@ -64,7 +64,7 @@
                             <input type="text" id="yParamInput" placeholder="Równanie dla y używając t, np. sin(t)">
                         </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+                    <div class="axes-grid axes-2">
                         <div><label for="tMinInput" style="display:block;margin-bottom:4px;">t min:</label><input type="text" id="tMinInput" value="-6.28" style="width:100%;" placeholder="np. -2*pi"></div>
                         <div><label for="tMaxInput" style="display:block;margin-bottom:4px;">t max:</label><input type="text" id="tMaxInput" value="6.28" style="width:100%;" placeholder="np. 2*pi"></div>
                     </div>
@@ -77,7 +77,7 @@
                             <input type="text" id="rInput" placeholder="np. 1 + 0.5 * cos(6*t)">
                         </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+                    <div class="axes-grid axes-2">
                         <div><label for="thetaMinInput" style="display:block;margin-bottom:4px;">θ min:</label><input type="text" id="thetaMinInput" value="0" style="width:100%;" placeholder="np. 0"></div>
                         <div><label for="thetaMaxInput" style="display:block;margin-bottom:4px;">θ max:</label><input type="text" id="thetaMaxInput" value="6.28" style="width:100%;" placeholder="np. 2*pi"></div>
                     </div>
@@ -90,7 +90,7 @@
                             <input type="text" id="surfaceInput" placeholder="np. sin(x)*cos(y) lub x^2 + y^2">
                         </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:8px;">
+                    <div class="axes-grid axes-4">
                         <div><label for="xMin3D" style="display:block;margin-bottom:4px;">X min:</label><input type="text" id="xMin3D" value="-5" style="width:100%;"></div>
                         <div><label for="xMax3D" style="display:block;margin-bottom:4px;">X max:</label><input type="text" id="xMax3D" value="5" style="width:100%;"></div>
                         <div><label for="yMin3D" style="display:block;margin-bottom:4px;">Y min:</label><input type="text" id="yMin3D" value="-5" style="width:100%;"></div>
@@ -214,6 +214,9 @@
                                 <label style="display:block;margin-bottom:8px;">
                                     <input type="checkbox" id="intersectionsCheckbox">&nbsp;Punkty przecięcia
                                 </label>
+                                <label style="display:block;margin-bottom:8px;">
+                                    <input type="checkbox" id="derivativePlotCheckbox">&nbsp;Pokaż wykres pochodnej f'(x)
+                                </label>
                             </div>
                             
                             <div class="integral-controls" style="border-top:1px solid #dee2e6;padding-top:8px;">
@@ -270,99 +273,83 @@
                 <div class="help-column">
                     <h3>Jak korzystać:</h3>
                     <ol>
-                        <li>Wpisz funkcję matematyczną w pole tekstowe (lub kliknij przykład poniżej)</li>
-                        <li>Kliknij "Rysuj wykres" aby zobaczyć funkcję</li>
-                        <li>Użyj "Auto-fit" aby automatycznie dopasować widok</li>
-                        <li>Nawiguj wykresem używając przycisków + - ← → ↑ ↓</li>
+                        <li>Wybierz tryb wykresu: kartezjański, parametryczny, biegunowy albo powierzchnia 3D.</li>
+                        <li>Wpisz funkcję w odpowiednie pola (y=f(x), x(t)/y(t), r(t) lub z(x,y)).</li>
+                        <li>We wszystkich polach liczbowych możesz wpisywać π oraz wyrażenia, np. <code>2*pi</code>, <code>pi/3</code>, <code>25*2</code>.</li>
+                        <li>Ustaw zakresy i (opcjonalnie) przełącz jednostki kątów: Radiany/Stopnie.</li>
+                        <li>Kliknij „Rysuj wykres”. Użyj „Auto-fit” do dopasowania widoku lub „Reset widoku”.</li>
+                        <li>W „Analiza” włącz: miejsca zerowe, ekstrema, punkty przecięcia (opcjonalnie).</li>
+                        <li>Całka oznaczona: podaj a,b i kliknij „Oblicz i zacieniuj”. Możesz włączyć etykietę wartości na wykresie.</li>
                     </ol>
 
-                    <h3>Podstawowe operatory:</h3>
-                    <div class="function-grid">
-                        <div class="function-item">
-                            <code>+</code>
-                            <span>Dodawanie</span>
-                        </div>
-                        <div class="function-item">
-                            <code>-</code>
-                            <span>Odejmowanie</span>
-                        </div>
-                        <div class="function-item">
-                            <code>*</code>
-                            <span>Mnożenie</span>
-                        </div>
-                        <div class="function-item">
-                            <code>/</code>
-                            <span>Dzielenie</span>
-                        </div>
-                        <div class="function-item">
-                            <code>^</code>
-                            <span>Potęgowanie</span>
-                        </div>
-                    </div>
+                    <h3>Oś i render:</h3>
+                    <ul>
+                        <li>Oś X w wielokrotnościach π (dla trybu kartezjańskiego).</li>
+                        <li>Dokładność próbkowania: Szybko / Domyślna / Precyzyjna.</li>
+                        <li>Nawigacja: przyciski +/− oraz strzałki, a także przeciąganie i zoom kółkiem.</li>
+                    </ul>
                 </div>
 
                 <div class="help-column">
-                    <h3>Funkcje matematyczne:</h3>
+                    <h3>Składnia i funkcje:</h3>
                     <div class="function-grid">
-                        <div class="function-item">
-                            <code>sin(x)</code>
-                            <span>Sinus</span>
-                        </div>
-                        <div class="function-item">
-                            <code>cos(x)</code>
-                            <span>Cosinus</span>
-                        </div>
-                        <div class="function-item">
-                            <code>tan(x)</code>
-                            <span>Tangens</span>
-                        </div>
-                        <div class="function-item">
-                            <code>sqrt(x)</code>
-                            <span>Pierwiastek</span>
-                        </div>
-                        <div class="function-item">
-                            <code>abs(x)</code>
-                            <span>Wartość bezwzględna</span>
-                        </div>
-                        <div class="function-item">
-                            <code>log(x)</code>
-                            <span>Logarytm</span>
-                        </div>
-                        <div class="function-item">
-                            <code>ln(x)</code>
-                            <span>Logarytm naturalny</span>
-                        </div>
+                        <div class="function-item"><code>+</code><span>Dodawanie</span></div>
+                        <div class="function-item"><code>-</code><span>Odejmowanie</span></div>
+                        <div class="function-item"><code>*</code><span>Mnożenie</span></div>
+                        <div class="function-item"><code>/</code><span>Dzielenie</span></div>
+                        <div class="function-item"><code>^</code><span>Potęgowanie</span></div>
                     </div>
+                    <div class="function-grid" style="margin-top:10px;">
+                        <div class="function-item"><code>sin(•)</code><span>Sinus</span></div>
+                        <div class="function-item"><code>cos(•)</code><span>Cosinus</span></div>
+                        <div class="function-item"><code>tan(•)</code><span>Tangens</span></div>
+                        <div class="function-item"><code>sqrt(•)</code><span>Pierwiastek</span></div>
+                        <div class="function-item"><code>abs(•)</code><span>Wartość bezwzględna</span></div>
+                        <div class="function-item"><code>log(•)</code><span>Logarytm (10)</span></div>
+                        <div class="function-item"><code>ln(•)</code><span>Log. naturalny</span></div>
+                        <div class="function-item"><code>exp(•)</code><span>e^x</span></div>
+                    </div>
+                    <ul style="margin-top:10px;">
+                        <li>Zmienne: <code>x</code> (kartezjański), <code>t</code> (parametryczny/biegunowy), <code>x,y</code> (3D).</li>
+                        <li>W biegunowym używamy <code>r(t)</code>, gdzie t = θ.</li>
+                        <li>Przełącznik „Kąty” decyduje jak interpretowane są t, θ oraz granice całkowania.</li>
+                    </ul>
                 </div>
 
                 <div class="help-column">
-                    <h3>Przykłady funkcji:</h3>
-                    <div class="example-grid">
+                    <h3>Całki i przykłady:</h3>
+                    <ul>
+                        <li>Kartezjański: <code>∫ f(x) dx</code> i cieniowanie obszaru (oddzielnie dla części dodatnich/ujemnych).</li>
+                        <li>Parametryczny: <code>∫ y(t) · x'(t) dt</code> — podświetlenie odcinka t∈[a,b].</li>
+                        <li>Biegunowy: <code>½ ∫ r(t)^2 dt</code> — klin (wedge) na wykresie.</li>
+                        <li>3D: <code>∬ z(x,y) dA</code> po prostokącie (wartość w panelu wyników).</li>
+                    </ul>
+                    <div class="example-grid" style="margin-top:10px;">
                         <div class="example-item" onclick="insertFunction('x^2')">
                             <code>x^2</code>
-                            <span>Parabola</span>
+                            <span>Kartezjański</span>
                         </div>
                         <div class="example-item" onclick="insertFunction('sin(x)')">
                             <code>sin(x)</code>
-                            <span>Sinusoida</span>
+                            <span>Zakres np. -2*pi…2*pi</span>
                         </div>
-                        <div class="example-item" onclick="insertFunction('x^2 + 2*x + 1')">
-                            <code>x^2 + 2*x + 1</code>
-                            <span>Wielomian kwadratowy</span>
+                        <div class="example-item" onclick="insertFunction('cos(t)')">
+                            <code>x(t)=cos(t), y(t)=sin(t)</code>
+                            <span>Parametryczny, t: 0…2*pi</span>
                         </div>
-                        <div class="example-item" onclick="insertFunction('1/x')">
-                            <code>1/x</code>
-                            <span>Hiperbola</span>
+                        <div class="example-item" onclick="insertFunction('1+0.5*cos(6*t)')">
+                            <code>r(t)=1+0.5*cos(6*t)</code>
+                            <span>Biegunowy, θ: 0…2*pi</span>
                         </div>
-                        <div class="example-item" onclick="insertFunction('sqrt(abs(x))')">
-                            <code>sqrt(abs(x))</code>
-                            <span>Pierwiastek z wartości bezwzględnej</span>
-                        </div>
-                        <div class="example-item" onclick="insertFunction('sin(x) * cos(x)')">
-                            <code>sin(x) * cos(x)</code>
-                            <span>Iloczyn funkcji trygonometrycznych</span>
+                        <div class="example-item" onclick="insertFunction('sin(x)*cos(y)')">
+                            <code>z=sin(x)*cos(y)</code>
+                            <span>3D, x/y: -pi…pi</span>
                         </div>
                     </div>
+                    <ul style="margin-top:10px;">
+                        <li>W polach granic wpisuj: <code>pi/2</code>, <code>3*pi</code>, <code>-pi</code> itd.</li>
+                        <li>Opcja „Pokaż wartość całki na wykresie” dodaje etykietę nad zacieniowanym obszarem/klinami.</li>
+                    </ul>
                 </div>
             </div>
         </details>
