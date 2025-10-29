@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Funkcji Matematycznych</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="calculator-container">
+        <div class="calculator-header">
+            <h2>Kalkulator Funkcji Matematycznych</h2>
+            <div class="function-input-container">
+                <!-- GRUPA: Wybór trybu wykresu -->
+                <fieldset class="ui-group">
+                    <legend>📊 Tryb wykresu</legend>
+                    <div>
+                        <select id="plotMode" style="width:100%;padding:8px;font-size:14px;">
+                            <option value="cartesian">Kartezjański (y = f(x))</option>
+                            <option value="parametric">Parametryczny (x(t), y(t))</option>
+                            <option value="polar">Biegunowy (r(t))</option>
+                            <option value="3d">Powierzchnia 3D (z = f(x,y))</option>
+                        </select>
+                        <div id="modeHelper" class="mode-helper"></div>
+                    </div>
+                </fieldset>
+
+                <!-- GRUPA: Definicja funkcji -->
+                <fieldset class="ui-group">
+                    <legend>✏️ Funkcje</legend>
+                <div id="cartesianInputs">
+                <div class="function-row">
+                    <div class="function-field">
+                        <div class="function-label">f₁(x) =</div>
+                        <input type="text" id="functionInput" placeholder="Wpisz funkcję używając zmiennej x, np. sin(x) lub x^2">
+                        <div class="color-indicator" style="background: rgb(75,192,192)"></div>
+                    </div>
+                </div>
+                <div class="function-row">
+                    <div class="function-field">
+                        <div class="function-label">f₂(x) =</div>
+                        <input type="text" id="function2Input" placeholder="Druga funkcja z x (opcjonalnie), np. cos(x)">
+                        <div class="color-indicator" style="background: rgb(255,99,132)"></div>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:8px;">
+                    <div><label for="xMin" style="display:block;margin-bottom:4px;">X min:</label><input type="number" id="xMin" value="-10" step="0.5" style="width:100%;"></div>
+                    <div><label for="xMax" style="display:block;margin-bottom:4px;">X max:</label><input type="number" id="xMax" value="10" step="0.5" style="width:100%;"></div>
+                    <div><label for="yMin" style="display:block;margin-bottom:4px;">Y min:</label><input type="number" id="yMin" value="-10" step="0.5" style="width:100%;"></div>
+                    <div><label for="yMax" style="display:block;margin-bottom:4px;">Y max:</label><input type="number" id="yMax" value="10" step="0.5" style="width:100%;"></div>
+                </div>
+                </div>
+                <!-- Parametryczne i biegunowe wejścia (poza blokiem kartezjańskim) -->
+                <div id="parametricInputs" style="display:none;margin-bottom:8px;">
+                    <div class="function-row" style="margin-bottom:6px;">
+                        <div class="function-field">
+                            <div class="function-label">x(t) =</div>
+                            <input type="text" id="xParamInput" placeholder="Równanie dla x używając t, np. cos(t)">
+                        </div>
+                    </div>
+                    <div class="function-row" style="margin-bottom:6px;">
+                        <div class="function-field">
+                            <div class="function-label">y(t) =</div>
+                            <input type="text" id="yParamInput" placeholder="Równanie dla y używając t, np. sin(t)">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+                        <div><label for="tMinInput" style="display:block;margin-bottom:4px;">t min:</label><input type="number" id="tMinInput" value="-6.28" step="0.1" style="width:100%;"></div>
+                        <div><label for="tMaxInput" style="display:block;margin-bottom:4px;">t max:</label><input type="number" id="tMaxInput" value="6.28" step="0.1" style="width:100%;"></div>
+                    </div>
+                </div>
+
+                <div id="polarInputs" style="display:none;margin-bottom:8px;">
+                    <div class="function-row" style="margin-bottom:6px;">
+                        <div class="function-field">
+                            <div class="function-label">r(t) =</div>
+                            <input type="text" id="rInput" placeholder="np. 1 + 0.5 * cos(6*t)">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+                        <div><label for="thetaMinInput" style="display:block;margin-bottom:4px;">θ min:</label><input type="number" id="thetaMinInput" value="0" step="0.1" style="width:100%;"></div>
+                        <div><label for="thetaMaxInput" style="display:block;margin-bottom:4px;">θ max:</label><input type="number" id="thetaMaxInput" value="6.28" step="0.1" style="width:100%;"></div>
+                    </div>
+                </div>
+                
+                <div id="3dInputs" style="display:none;margin-bottom:8px;">
+                    <div class="function-row" style="margin-bottom:6px;">
+                        <div class="function-field">
+                            <div class="function-label">z(x,y) =</div>
+                            <input type="text" id="surfaceInput" placeholder="np. sin(x)*cos(y) lub x^2 + y^2">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:8px;">
+                        <div><label for="xMin3D" style="display:block;margin-bottom:4px;">X min:</label><input type="number" id="xMin3D" value="-5" step="0.5" style="width:100%;"></div>
+                        <div><label for="xMax3D" style="display:block;margin-bottom:4px;">X max:</label><input type="number" id="xMax3D" value="5" step="0.5" style="width:100%;"></div>
+                        <div><label for="yMin3D" style="display:block;margin-bottom:4px;">Y min:</label><input type="number" id="yMin3D" value="-5" step="0.5" style="width:100%;"></div>
+                        <div><label for="yMax3D" style="display:block;margin-bottom:4px;">Y max:</label><input type="number" id="yMax3D" value="5" step="0.5" style="width:100%;"></div>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <label for="resolution3D" style="display:block;margin-bottom:4px;">Rozdzielczość:</label>
+                        <input type="number" id="resolution3D" value="50" min="10" max="200" step="5" style="width:100%;">
+                    </div>
+                </div>
+                <div id="cartesianQuickFunctions" class="quick-functions">
+                    <span data-func="x^2">x²</span>
+                    <span data-func="x^3">x³</span>
+                    <span data-func="sin(x)">sin(x)</span>
+                    <span data-func="cos(x)">cos(x)</span>
+                    <span data-func="tan(x)">tan(x)</span>
+                    <span data-func="sqrt(x)">√x</span>
+                    <span data-func="abs(x)">|x|</span>
+                    <span data-func="log(x)">log(x)</span>
+                    <span data-func="exp(x)">eˣ</span>
+                    <span data-func="1/x">1/x</span>
+                </div>
+                <div id="parametricQuickFunctions" class="quick-functions" style="display:none">
+                    <span data-func="cos(t)">cos(t)</span>
+                    <span data-func="sin(t)">sin(t)</span>
+                    <span data-func="t*cos(t)">t·cos(t)</span>
+                    <span data-func="t*sin(t)">t·sin(t)</span>
+                    <span data-func="cos(2*t)">cos(2t)</span>
+                    <span data-func="sin(2*t)">sin(2t)</span>
+                    <span data-func="t">t</span>
+                    <span data-func="t^2">t²</span>
+                </div>
+                <div id="polarQuickFunctions" class="quick-functions" style="display:none">
+                    <span data-func="1+cos(t)">1+cos(t)</span>
+                    <span data-func="sin(3*t)">sin(3t)</span>
+                    <span data-func="t/3">spirala</span>
+                    <span data-func="2*cos(t)">2cos(t)</span>
+                    <span data-func="1">okrąg</span>
+                    <span data-func="sin(5*t)">sin(5t)</span>
+                    <span data-func="1+sin(t)">1+sin(t)</span>
+                    <span data-func="2+cos(4*t)">róża</span>
+                </div>
+                <div id="3dQuickFunctions" class="quick-functions" style="display:none">
+                    <span data-func="sin(x)*cos(y)">sin(x)cos(y)</span>
+                    <span data-func="x^2 + y^2">paraboloida</span>
+                    <span data-func="sin(sqrt(x^2+y^2))">fala</span>
+                    <span data-func="exp(-(x^2+y^2))">Gauss</span>
+                    <span data-func="sin(x)+cos(y)">sin(x)+cos(y)</span>
+                    <span data-func="x*y">x·y</span>
+                </div>
+                </fieldset>
+
+                <!-- GRUPA: Renderowanie -->
+                <fieldset class="ui-group">
+                    <legend>⚙️ Renderowanie</legend>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;">
+                        <div>
+                            <label for="angleMode" style="display:block;margin-bottom:6px;font-weight:500;">Kąty:</label>
+                            <select id="angleMode" style="width:100%;padding:8px;">
+                                <option value="radians">Radiany</option>
+                                <option value="degrees">Stopnie</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="samplingPreset" style="display:block;margin-bottom:6px;font-weight:500;">Dokładność:</label>
+                            <select id="samplingPreset" style="width:100%;padding:8px;">
+                                <option value="default" selected>Domyślna</option>
+                                <option value="fast">Szybko</option>
+                                <option value="quality">Precyzyjna</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label style="display:flex;align-items:center;cursor:pointer;">
+                            <input type="checkbox" id="piAxisCheckbox">&nbsp;Oś X w wielokrotnościach π
+                        </label>
+                    </div>
+                </fieldset>
+
+                <button id="plotButton">Rysuj wykres</button>
+            </div>
+        </div>
+        
+        <div class="calculator-main">
+            <div class="calculator-sidebar">
+                <!-- GRUPA: Parametry dynamiczne -->
+                <details class="ui-group sidebar-group collapsible" open>
+                    <summary>🎚️ Parametry</summary>
+                    <div id="paramControls" class="param-controls"></div>
+                </details>
+                
+                <div class="controls">
+                    <!-- GRUPA: Nawigacja -->
+                    <details class="ui-group sidebar-group collapsible">
+                        <summary>🧭 Nawigacja</summary>
+                        <div class="group-content">
+                            <button id="autoFit" style="width:100%;margin-bottom:6px;font-size:12px;padding:6px;">Auto-fit</button>
+                            <button id="resetView" style="width:100%;margin-bottom:8px;font-size:12px;padding:6px;">Reset widoku</button>
+                            <div class="navigation-controls">
+                                <button id="zoomIn" title="Przybliż">+</button>
+                                <button id="zoomOut" title="Oddal">-</button>
+                                <button id="panLeft" title="Przesuń w lewo">←</button>
+                                <button id="panRight" title="Przesuń w prawo">→</button>
+                                <button id="panUp" title="Przesuń w górę">↑</button>
+                                <button id="panDown" title="Przesuń w dół">↓</button>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- GRUPA: Analiza funkcji -->
+                    <details class="ui-group sidebar-group collapsible" open>
+                        <summary>🔍 Analiza</summary>
+                        <div class="group-content">
+                            <div class="analysis-options">
+                                <label style="display:block;margin-bottom:6px;">
+                                    <input type="checkbox" id="zerosCheckbox">&nbsp;Miejsca zerowe
+                                </label>
+                                <label style="display:block;margin-bottom:6px;">
+                                    <input type="checkbox" id="extremaCheckbox">&nbsp;Ekstrema
+                                </label>
+                                <label style="display:block;margin-bottom:8px;">
+                                    <input type="checkbox" id="intersectionsCheckbox">&nbsp;Punkty przecięcia
+                                </label>
+                            </div>
+                            
+                            <div class="integral-controls" style="border-top:1px solid #dee2e6;padding-top:8px;">
+                                <label style="display:block;margin-bottom:6px;font-weight:500;font-size:12px;">Całka oznaczona:</label>
+                                <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+                                    <label for="integralA" style="font-size:12px;">a:</label>
+                                    <input type="number" id="integralA" value="0" step="0.1" style="width:60px;padding:4px;font-size:12px;">
+                                    <label for="integralB" style="font-size:12px;">b:</label>
+                                    <input type="number" id="integralB" value="1" step="0.1" style="width:60px;padding:4px;font-size:12px;">
+                                </div>
+                                <button id="calculateIntegralButton" style="width:100%;font-size:12px;padding:6px;">Oblicz i zacieniuj</button>
+                            </div>
+                        </div>
+                    </details>
+                    
+                    <!-- GRUPA: Import danych -->
+                    <details class="ui-group sidebar-group collapsible">
+                        <summary>🔬 Import danych</summary>
+                        <div class="group-content">
+                            <label for="dataInput" style="display:block;margin-bottom:4px;font-weight:500;font-size:12px;">CSV:</label>
+                            <textarea id="dataInput" placeholder="x, y&#10;1, 5.2&#10;2, 8.1" style="width:100%;min-height:80px;border:1px solid #ced4da;border-radius:4px;padding:6px;font-family:'Consolas',monospace;font-size:11px;box-sizing:border-box;"></textarea>
+                            
+                            <div style="margin-top:6px;">
+                                <label for="dataURL" style="display:block;margin-bottom:4px;font-weight:500;font-size:12px;">API URL:</label>
+                                <input type="text" id="dataURL" placeholder="https://api.example.com/data.json" style="width:100%;padding:5px;border:1px solid #ced4da;border-radius:4px;box-sizing:border-box;font-size:11px;">
+                            </div>
+                            
+                            <div class="data-buttons" style="display:flex;gap:4px;margin-top:8px;">
+                                <button id="loadDataButton" style="flex:1;font-size:11px;padding:5px;">Załaduj</button>
+                                <button id="fetchDataButton" style="flex:1;background:#28a745;font-size:11px;padding:5px;">Pobierz</button>
+                                <button id="clearDataButton" class="clear-btn" style="flex:1;background:#f44336;color:white;font-size:11px;padding:5px;">Wyczyść</button>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <div id="myChart"></div>
+             <p id="errorDisplay"></p>
+        </div>
+        
+        <!-- Panel wyników analizy -->
+        <div id="analysisResults" class="analysis-results" style="display:none;">
+            <h4>📋 Wyniki analizy:</h4>
+            <div id="analysisResultsContent"></div>
+        </div>
+
+        <details class="help-section">
+            <summary>Instrukcja obsługi i dostępne funkcje</summary>
+            <div class="help-content">
+                <div class="help-column">
+                    <h3>Jak korzystać:</h3>
+                    <ol>
+                        <li>Wpisz funkcję matematyczną w pole tekstowe (lub kliknij przykład poniżej)</li>
+                        <li>Kliknij "Rysuj wykres" aby zobaczyć funkcję</li>
+                        <li>Użyj "Auto-fit" aby automatycznie dopasować widok</li>
+                        <li>Nawiguj wykresem używając przycisków + - ← → ↑ ↓</li>
+                    </ol>
+
+                    <h3>Podstawowe operatory:</h3>
+                    <div class="function-grid">
+                        <div class="function-item">
+                            <code>+</code>
+                            <span>Dodawanie</span>
+                        </div>
+                        <div class="function-item">
+                            <code>-</code>
+                            <span>Odejmowanie</span>
+                        </div>
+                        <div class="function-item">
+                            <code>*</code>
+                            <span>Mnożenie</span>
+                        </div>
+                        <div class="function-item">
+                            <code>/</code>
+                            <span>Dzielenie</span>
+                        </div>
+                        <div class="function-item">
+                            <code>^</code>
+                            <span>Potęgowanie</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="help-column">
+                    <h3>Funkcje matematyczne:</h3>
+                    <div class="function-grid">
+                        <div class="function-item">
+                            <code>sin(x)</code>
+                            <span>Sinus</span>
+                        </div>
+                        <div class="function-item">
+                            <code>cos(x)</code>
+                            <span>Cosinus</span>
+                        </div>
+                        <div class="function-item">
+                            <code>tan(x)</code>
+                            <span>Tangens</span>
+                        </div>
+                        <div class="function-item">
+                            <code>sqrt(x)</code>
+                            <span>Pierwiastek</span>
+                        </div>
+                        <div class="function-item">
+                            <code>abs(x)</code>
+                            <span>Wartość bezwzględna</span>
+                        </div>
+                        <div class="function-item">
+                            <code>log(x)</code>
+                            <span>Logarytm</span>
+                        </div>
+                        <div class="function-item">
+                            <code>ln(x)</code>
+                            <span>Logarytm naturalny</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="help-column">
+                    <h3>Przykłady funkcji:</h3>
+                    <div class="example-grid">
+                        <div class="example-item" onclick="insertFunction('x^2')">
+                            <code>x^2</code>
+                            <span>Parabola</span>
+                        </div>
+                        <div class="example-item" onclick="insertFunction('sin(x)')">
+                            <code>sin(x)</code>
+                            <span>Sinusoida</span>
+                        </div>
+                        <div class="example-item" onclick="insertFunction('x^2 + 2*x + 1')">
+                            <code>x^2 + 2*x + 1</code>
+                            <span>Wielomian kwadratowy</span>
+                        </div>
+                        <div class="example-item" onclick="insertFunction('1/x')">
+                            <code>1/x</code>
+                            <span>Hiperbola</span>
+                        </div>
+                        <div class="example-item" onclick="insertFunction('sqrt(abs(x))')">
+                            <code>sqrt(abs(x))</code>
+                            <span>Pierwiastek z wartości bezwzględnej</span>
+                        </div>
+                        <div class="example-item" onclick="insertFunction('sin(x) * cos(x)')">
+                            <code>sin(x) * cos(x)</code>
+                            <span>Iloczyn funkcji trygonometrycznych</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </details>
+    </div>
+    
+
+
+    
+    <!-- Plotly: interactive, modern plotting with built-in pan/zoom (replaces Chart.js) -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.1/math.js"></script>
+    <!-- Initialize Plotly with 3D support -->
+    <script>
+        if (Plotly) {
+            Plotly.setPlotConfig({
+                responsive: true,
+                displayModeBar: true,
+                showSendToCloud: false,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['lasso2d', 'select2d']
+            });
+        }
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>
