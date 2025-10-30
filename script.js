@@ -507,6 +507,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Helper: parse number-like input allowing expressions with pi/π
+    function parseNumberInput(raw) {
+        if (raw == null) return NaN;
+        const s = String(raw).trim()
+            .replace(/π/gi, 'pi')
+            .replace(/,/g, '.');
+        if (s === '') return NaN;
+        // Fast path: plain number
+        const direct = Number(s);
+        if (isFinite(direct)) return direct;
+        // Fallback: evaluate with math.js
+        try {
+            const v = math.evaluate(s);
+            return (isFinite(v) ? v : NaN);
+        } catch (_) {
+            return NaN;
+        }
+    }
+
     // Przywróć ostatnie zakresy z localStorage
     try {
         const savedRanges = JSON.parse(localStorage.getItem('chartRanges')) || {};
@@ -1950,12 +1969,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } else if (mode === '3d') {
                 const surfaceInput = document.getElementById('surfaceInput');
-                const xMin3D = parseNumberInput(document.getElementById('xMin3D').value);
-                const xMax3D = parseNumberInput(document.getElementById('xMax3D').value);
-                const yMin3D = parseNumberInput(document.getElementById('yMin3D').value);
-                const yMax3D = parseNumberInput(document.getElementById('yMax3D').value);
-                const resolution3D = parseNumberInput(document.getElementById('resolution3D').value);
-
+                const xMin3D = parseFloat(document.getElementById('xMin3D').value);
+                const xMax3D = parseFloat(document.getElementById('xMax3D').value);
+                const yMin3D = parseFloat(document.getElementById('yMin3D').value);
+                const yMax3D = parseFloat(document.getElementById('yMax3D').value);
                 if (!surfaceInput || !surfaceInput.value.trim()) {
                     errorDisplay.textContent = 'Wprowadź funkcję z(x,y)';
                     calcWorker.removeEventListener('message', integralListener);
