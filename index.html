@@ -32,16 +32,40 @@
                 <div id="cartesianInputs">
                 <div class="function-row">
                     <div class="function-field">
+                        <div class="color-indicator" style="background: rgb(75,192,192)"></div>
                         <div class="function-label">f₁(x) =</div>
                         <input type="text" id="functionInput" placeholder="Wpisz funkcję używając zmiennej x, np. sin(x) lub x^2">
-                        <div class="color-indicator" style="background: rgb(75,192,192)"></div>
+                        <!-- Inline quick presets moved next to the input to save vertical space -->
+                        <div id="cartesianQuickFunctions" class="quick-functions inline-presets">
+                            <span data-func="x^2">x²</span>
+                            <span data-func="x^3">x³</span>
+                            <span data-func="sin(x)">sin(x)</span>
+                            <span data-func="cos(x)">cos(x)</span>
+                            <span data-func="tan(x)">tan(x)</span>
+                            <span data-func="sqrt(x)">√x</span>
+                            <span data-func="abs(x)">|x|</span>
+                            <span data-func="log(x)">log(x)</span>
+                            <span data-func="exp(x)">eˣ</span>
+                            <span data-func="1/x">1/x</span>
+                        </div>
+                        
                     </div>
                 </div>
                 <div class="function-row">
                     <div class="function-field">
+                        <div class="color-indicator" style="background: rgb(255,99,132)"></div>
                         <div class="function-label">f₂(x) =</div>
                         <input type="text" id="function2Input" placeholder="Druga funkcja z x (opcjonalnie), np. cos(x)">
-                        <div class="color-indicator" style="background: rgb(255,99,132)"></div>
+                        <!-- Inline presets for f2(x) -->
+                        <div class="quick-functions inline-presets">
+                            <span data-func="x^2">x²</span>
+                            <span data-func="x^3">x³</span>
+                            <span data-func="sin(x)">sin(x)</span>
+                            <span data-func="cos(x)">cos(x)</span>
+                            <span data-func="tan(x)">tan(x)</span>
+                            <span data-func="abs(x)">|x|</span>
+                        </div>
+                        
                     </div>
                 </div>
                 <div class="axes-grid axes-4">
@@ -57,12 +81,33 @@
                         <div class="function-field">
                             <div class="function-label">x(t) =</div>
                             <input type="text" id="xParamInput" placeholder="Równanie dla x używając t, np. cos(t)">
+                            <div id="parametricQuickFunctions" class="quick-functions inline-presets" style="display:none">
+                                <span data-func="cos(t)">cos(t)</span>
+                                <span data-func="sin(t)">sin(t)</span>
+                                <span data-func="t*cos(t)">t·cos(t)</span>
+                                <span data-func="t*sin(t)">t·sin(t)</span>
+                                <span data-func="cos(2*t)">cos(2t)</span>
+                                <span data-func="sin(2*t)">sin(2t)</span>
+                                <span data-func="t">t</span>
+                                <span data-func="t^2">t²</span>
+                            </div>
                         </div>
                     </div>
                     <div class="function-row" style="margin-bottom:6px;">
                         <div class="function-field">
                             <div class="function-label">y(t) =</div>
                             <input type="text" id="yParamInput" placeholder="Równanie dla y używając t, np. sin(t)">
+                            <!-- Inline presets for y(t) -->
+                            <div class="quick-functions inline-presets" style="display:none">
+                                <span data-func="cos(t)">cos(t)</span>
+                                <span data-func="sin(t)">sin(t)</span>
+                                <span data-func="t*cos(t)">t·cos(t)</span>
+                                <span data-func="t*sin(t)">t·sin(t)</span>
+                                <span data-func="cos(2*t)">cos(2t)</span>
+                                <span data-func="sin(2*t)">sin(2t)</span>
+                                <span data-func="t">t</span>
+                                <span data-func="t^2">t²</span>
+                            </div>
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
@@ -76,6 +121,16 @@
                         <div class="function-field">
                             <div class="function-label">r(t) =</div>
                             <input type="text" id="rInput" placeholder="np. 1 + 0.5 * cos(6*t)">
+                            <div id="polarQuickFunctions" class="quick-functions inline-presets" style="display:none">
+                                <span data-func="1+cos(t)">1+cos(t)</span>
+                                <span data-func="sin(3*t)">sin(3t)</span>
+                                <span data-func="t/3">spirala</span>
+                                <span data-func="2*cos(t)">2cos(t)</span>
+                                <span data-func="1">okrąg</span>
+                                <span data-func="sin(5*t)">sin(5t)</span>
+                                <span data-func="1+sin(t)">1+sin(t)</span>
+                                <span data-func="2+cos(4*t)">róża</span>
+                            </div>
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
@@ -89,6 +144,14 @@
                         <div class="function-field">
                             <div class="function-label">z(x,y) =</div>
                             <input type="text" id="surfaceInput" placeholder="np. sin(x)*cos(y) lub x^2 + y^2">
+                            <div id="3dQuickFunctions" class="quick-functions inline-presets" style="display:none">
+                                <span data-func="sin(x)*cos(y)">sin(x)cos(y)</span>
+                                <span data-func="x^2 + y^2">paraboloida</span>
+                                <span data-func="sin(sqrt(x^2+y^2))">fala</span>
+                                <span data-func="exp(-(x^2+y^2))">Gauss</span>
+                                <span data-func="sin(x)+cos(y)">sin(x)+cos(y)</span>
+                                <span data-func="x*y">x·y</span>
+                            </div>
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:8px;">
@@ -102,46 +165,7 @@
                         <input type="text" id="resolution3D" value="50" style="width:100%;" placeholder="np. 25*2">
                     </div>
                 </div>
-                <div id="cartesianQuickFunctions" class="quick-functions">
-                    <span data-func="x^2">x²</span>
-                    <span data-func="x^3">x³</span>
-                    <span data-func="sin(x)">sin(x)</span>
-                    <span data-func="cos(x)">cos(x)</span>
-                    <span data-func="tan(x)">tan(x)</span>
-                    <span data-func="sqrt(x)">√x</span>
-                    <span data-func="abs(x)">|x|</span>
-                    <span data-func="log(x)">log(x)</span>
-                    <span data-func="exp(x)">eˣ</span>
-                    <span data-func="1/x">1/x</span>
-                </div>
-                <div id="parametricQuickFunctions" class="quick-functions" style="display:none">
-                    <span data-func="cos(t)">cos(t)</span>
-                    <span data-func="sin(t)">sin(t)</span>
-                    <span data-func="t*cos(t)">t·cos(t)</span>
-                    <span data-func="t*sin(t)">t·sin(t)</span>
-                    <span data-func="cos(2*t)">cos(2t)</span>
-                    <span data-func="sin(2*t)">sin(2t)</span>
-                    <span data-func="t">t</span>
-                    <span data-func="t^2">t²</span>
-                </div>
-                <div id="polarQuickFunctions" class="quick-functions" style="display:none">
-                    <span data-func="1+cos(t)">1+cos(t)</span>
-                    <span data-func="sin(3*t)">sin(3t)</span>
-                    <span data-func="t/3">spirala</span>
-                    <span data-func="2*cos(t)">2cos(t)</span>
-                    <span data-func="1">okrąg</span>
-                    <span data-func="sin(5*t)">sin(5t)</span>
-                    <span data-func="1+sin(t)">1+sin(t)</span>
-                    <span data-func="2+cos(4*t)">róża</span>
-                </div>
-                <div id="3dQuickFunctions" class="quick-functions" style="display:none">
-                    <span data-func="sin(x)*cos(y)">sin(x)cos(y)</span>
-                    <span data-func="x^2 + y^2">paraboloida</span>
-                    <span data-func="sin(sqrt(x^2+y^2))">fala</span>
-                    <span data-func="exp(-(x^2+y^2))">Gauss</span>
-                    <span data-func="sin(x)+cos(y)">sin(x)+cos(y)</span>
-                    <span data-func="x*y">x·y</span>
-                </div>
+                
                 </fieldset>
 
                 <!-- GRUPA: Renderowanie -->
@@ -217,6 +241,14 @@
                                 <label style="display:block;margin-bottom:6px;">
                                     <input type="checkbox" id="inflectionsCheckbox">&nbsp;🔄 Punkty przegięcia
                                 </label>
+                                <div id="inflectionsQualityWrap" style="display:none;margin:4px 0 10px 22px;">
+                                    <label for="inflectionsQuality" style="font-size:12px;display:block;margin-bottom:4px;">Dokładność przegięć:</label>
+                                    <select id="inflectionsQuality" style="width:100%;padding:6px;font-size:12px;">
+                                        <option value="default" selected>Domyślna</option>
+                                        <option value="fast">Szybko</option>
+                                        <option value="quality">Precyzyjna</option>
+                                    </select>
+                                </div>
                                 <label style="display:block;margin-bottom:8px;">
                                     <input type="checkbox" id="intersectionsCheckbox">&nbsp;✖️ Punkty przecięcia
                                 </label>
@@ -272,17 +304,34 @@
                             </div>
                         </div>
                     </details>
+
+                    
                 </div>
             </div>
 
-            <div id="myChart"></div>
-             <p id="errorDisplay"></p>
-        </div>
-        
-        <!-- Panel wyników analizy -->
-        <div id="analysisResults" class="analysis-results" style="display:none;">
-            <h4>📋 Wyniki analizy:</h4>
-            <div id="analysisResultsContent"></div>
+            <div class="calculator-content">
+                <div id="myChart"></div>
+                <p id="errorDisplay"></p>
+                <!-- Wspólny kontener: jeden przycisk zwija/rozwija wyniki i historię -->
+                <details id="insightsToggle" class="insights" open>
+                    <summary>📋 Wyniki analizy i 📜 Historia</summary>
+                    <div class="insights-row">
+                        <div id="analysisResults" class="analysis-results">
+                            <h4>📋 Wyniki analizy</h4>
+                            <div id="analysisResultsContent"></div>
+                        </div>
+                        <div id="historyPanel" class="history-panel">
+                            <div class="history-header">
+                                <span>📜 Historia</span>
+                                <button id="clearHistoryButton" title="Wyczyść historię">Wyczyść</button>
+                            </div>
+                            <div class="history-body">
+                                <div id="historyList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </div>
         </div>
 
         <!-- Loading indicator -->

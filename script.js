@@ -3,6 +3,10 @@ let loadedDataTrace = null; // Trace dla importowanych danych 2D (CSV/API)
 let loadedData3DTrace = null; // Trace dla importowanych danych 3D (CSV/API)
 let currentAnalysisData = { zeros: [], extrema: [], inflections: [], intersections: [], integral: null, derivative: '', areaBetween: null }; // Initialize early for 3D access
 
+// History management
+let plotHistory = [];
+const MAX_HISTORY_ITEMS = 20;
+
 // Funkcja do renderowania wykresu 3D
 function handle3DPlot(data) {
     console.log('Otrzymane dane 3D:', data);
@@ -221,6 +225,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadDataButton = document.getElementById('loadDataButton');
     const fetchDataButton = document.getElementById('fetchDataButton');
     const clearDataButton = document.getElementById('clearDataButton');
+    const historyList = document.getElementById('historyList');
+    const clearHistoryButton = document.getElementById('clearHistoryButton');
 
     // Śledź ostatnio aktywne pole wprowadzania
     let lastActiveInput = null;
@@ -237,49 +243,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Obsługa kliknięć w szybkie funkcje
+    // Obsługa kliknięć w szybkie funkcje: zawsze wpisuj do pola w tym samym wierszu
     document.querySelectorAll('.quick-functions span').forEach(span => {
         span.addEventListener('click', (e) => {
             const func = e.target.getAttribute('data-func');
-            if (func) {
-                if (lastActiveInput) {
-                    // Zachowaj pozycję kursora
-                    const start = lastActiveInput.selectionStart;
-                    const end = lastActiveInput.selectionEnd;
-                    const text = lastActiveInput.value;
-                    
-                    // Wstaw funkcję
-                    lastActiveInput.value = text.substring(0, start) + func + text.substring(end);
-                    
-                    // Przywróć fokus i ustaw kursor
-                    lastActiveInput.focus();
-                    lastActiveInput.setSelectionRange(start + func.length, start + func.length);
-                } else {
-                    // Jeśli nie było aktywnego pola, użyj domyślnego dla aktualnego trybu
-                    insertFunction(func);
-                }
+            if (!func) return;
+
+            // Znajdź kontener wiersza i skojarzone INPUT
+            const field = e.target.closest('.function-field');
+            let targetInput = field ? field.querySelector('input[type="text"]') : null;
+
+            // Jeśli nie znaleziono po strukturze DOM, użyj poprzedniej logiki jako fallback
+            if (!targetInput) {
+                if (lastActiveInput) targetInput = lastActiveInput;
+                else return insertFunction(func);
+            }
+
+            try {
+                // Wstaw z zachowaniem kursora (nawet gdy input nie miał fokusa)
+                const start = targetInput.selectionStart ?? targetInput.value.length;
+                const end = targetInput.selectionEnd ?? targetInput.value.length;
+                const text = targetInput.value || '';
+                targetInput.value = text.substring(0, start) + func + text.substring(end);
+                targetInput.focus();
+                targetInput.setSelectionRange(start + func.length, start + func.length);
+                lastActiveInput = targetInput;
+            } catch (_) {
+                targetInput.value = (targetInput.value || '') + func;
+                targetInput.focus();
             }
         });
     });
 
+    // Inline presety są zawsze widoczne w aktywnej sekcji (steruje tym updateModeUI)
+
     // Funkcja do aktualizacji pomocy i przykładów
     function updateModeUI(mode) {
-        // Ukryj wszystkie zestawy szybkich funkcji i inputów
-        document.querySelectorAll('.quick-functions').forEach(set => set.style.display = 'none');
+    // Ukryj tylko grupy inputów trybów; szybkie funkcje są teraz inline i będą ukrywane razem z grupą
         document.getElementById('cartesianInputs').style.display = 'none';
         document.getElementById('parametricInputs').style.display = 'none';
         document.getElementById('polarInputs').style.display = 'none';
         document.getElementById('3dInputs').style.display = 'none';
         
-        // Pokaż odpowiedni zestaw szybkich funkcji
-        const quickFunctionsId = mode + 'QuickFunctions';
-        const quickFunctions = document.getElementById(quickFunctionsId);
-        if (quickFunctions) quickFunctions.style.display = 'block';
+    // Szybkie funkcje są osadzone przy polach i pokażą się wraz z grupą
         
         // Pokaż odpowiednie pola wprowadzania
         const inputsId = mode + 'Inputs';
         const inputs = document.getElementById(inputsId);
         if (inputs) inputs.style.display = 'block';
+        // Upewnij się, że inline preset toolbary w aktywnej grupie są widoczne
+        if (inputs) {
+            inputs.querySelectorAll('.inline-presets').forEach(el => el.style.display = 'flex');
+        }
         
         // Aktualizuj tekst pomocniczy
         const helperTexts = {
@@ -323,7 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Inicjalizacja przy załadowaniu
         updateModeUI(plotMode.value);
     }
-    const presetButtons = document.querySelectorAll('.presets button');
 
     // Przyciski nawigacji
     const zoomInBtn = document.getElementById('zoomIn');
@@ -362,6 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const extremaCheckbox = document.getElementById('extremaCheckbox');
     const intersectionsCheckbox = document.getElementById('intersectionsCheckbox');
     const inflectionsCheckbox = document.getElementById('inflectionsCheckbox');
+    const inflectionsQualityWrap = document.getElementById('inflectionsQualityWrap');
+    const inflectionsQuality = document.getElementById('inflectionsQuality');
     const derivativePlotCheckbox = document.getElementById('derivativePlotCheckbox');
     const integralControls = document.querySelector('.integral-controls');
     const betweenCurvesControls = document.querySelector('.between-curves-controls');
@@ -371,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'block';
             if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'block';
             if (inflectionsCheckbox) inflectionsCheckbox.parentElement.style.display = 'block';
+            if (inflectionsQualityWrap) inflectionsQualityWrap.style.display = 'block';
             if (derivativePlotCheckbox) {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz pochodną f'(x)");
@@ -387,6 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
             if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
             if (inflectionsCheckbox) inflectionsCheckbox.parentElement.style.display = 'none';
+            if (inflectionsQualityWrap) inflectionsQualityWrap.style.display = 'none';
             if (derivativePlotCheckbox) {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz dx/dt, dy/dt");
@@ -403,6 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
             if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
             if (inflectionsCheckbox) inflectionsCheckbox.parentElement.style.display = 'none';
+            if (inflectionsQualityWrap) inflectionsQualityWrap.style.display = 'none';
             if (derivativePlotCheckbox) {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz dr/dθ");
@@ -419,6 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
             if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
             if (inflectionsCheckbox) inflectionsCheckbox.parentElement.style.display = 'none';
+            if (inflectionsQualityWrap) inflectionsQualityWrap.style.display = 'none';
             if (derivativePlotCheckbox) derivativePlotCheckbox.parentElement.style.display = 'none';
             if (integralControls) integralControls.style.display = 'none';
             if (betweenCurvesControls) betweenCurvesControls.style.display = 'none';
@@ -580,6 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to display analysis results
     function displayAnalysisResults() {
         if (!analysisResults || !analysisResultsContent) return;
+        const insightsToggle = document.getElementById('insightsToggle');
         
     const { zeros, extrema, inflections, integral, intersections, derivative } = currentAnalysisData;
         const parts = [];
@@ -676,12 +697,10 @@ document.addEventListener('DOMContentLoaded', () => {
             parts.push(`<div style="margin-bottom:12px;line-height:1.8;background:linear-gradient(135deg,#fff3e0 0%,#ffe0b2 100%);padding:10px;border-radius:8px;border-left:4px solid #f57c00;"><strong style="font-size:15px;color:#e65100;">📐 ${title} ${rangeTxt}:</strong><br><span style="font-size:16px;color:#bf360c;font-weight:700;">${valueLabel}</span></div>`);
         }
         
-        if (parts.length > 0) {
-            analysisResultsContent.innerHTML = parts.join('');
-            analysisResults.style.display = 'block';
-        } else {
-            analysisResults.style.display = 'none';
-        }
+        const placeholder = '<div style="color:#6c757d;font-size:13px;">Brak wyników analizy. Włącz opcje w panelu „Analiza” i narysuj wykres.</div>';
+        analysisResultsContent.innerHTML = parts.length > 0 ? parts.join('') : placeholder;
+        analysisResults.style.display = 'block';
+        if (insightsToggle) { insightsToggle.style.display = 'block'; }
     }
 
     // Render function: builds traces and plots based on worker result
@@ -1371,13 +1390,15 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAnalysisData.integral = null;
         currentAnalysisData.derivative = '';
         currentAnalysisData.areaBetween = null; // Clear area between data
-        // Hide analysis results panel
-        if (analysisResults) {
-            analysisResults.style.display = 'none';
-        }
+        // Reset panel but zostaw widoczny (pusty placeholder)
+        const insightsToggle = document.getElementById('insightsToggle');
         if (analysisResultsContent) {
-            analysisResultsContent.innerHTML = '';
+            analysisResultsContent.innerHTML = '<div style="color:#6c757d;font-size:13px;">Brak wyników analizy.</div>';
         }
+        if (analysisResults) {
+            analysisResults.style.display = 'block';
+        }
+        if (insightsToggle) { insightsToggle.style.display = 'block'; }
     }
 
     // Debounced plot refresh for function input changes
@@ -1448,6 +1469,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // Obsługa przycisków zakresu
+    const presetButtons = document.querySelectorAll('.presets button');
     presetButtons.forEach(button => {
         button.addEventListener('click', () => {
             const range = parseInt(button.dataset.range);
@@ -2570,6 +2592,269 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // === KONIEC OBSŁUGI IMPORTU DANYCH ===
 
+    // === HISTORIA WYKRESÓW ===
+    
+    // Load history from localStorage
+    function loadHistory() {
+        try {
+            const saved = localStorage.getItem('plotHistory');
+            if (saved) {
+                plotHistory = JSON.parse(saved);
+                // Limit to MAX_HISTORY_ITEMS
+                if (plotHistory.length > MAX_HISTORY_ITEMS) {
+                    plotHistory = plotHistory.slice(-MAX_HISTORY_ITEMS);
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to load history:', e);
+            plotHistory = [];
+        }
+        renderHistoryList();
+    }
+
+    // Save history to localStorage
+    function saveHistory() {
+        try {
+            localStorage.setItem('plotHistory', JSON.stringify(plotHistory));
+        } catch (e) {
+            console.warn('Failed to save history:', e);
+        }
+    }
+
+    // Capture current state snapshot
+    function captureSnapshot() {
+        const mode = (plotMode && plotMode.value) || 'cartesian';
+        const timestamp = Date.now();
+        const date = new Date(timestamp);
+        const timeStr = date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+        
+        const snapshot = {
+            id: timestamp,
+            timestamp,
+            timeStr,
+            mode,
+            cartesian: {
+                expr1: (functionInput && functionInput.value) || '',
+                expr2: (function2Input && function2Input.value) || '',
+                xMin: (xMinInput && xMinInput.value) || '-10',
+                xMax: (xMaxInput && xMaxInput.value) || '10',
+                yMin: (yMinInput && yMinInput.value) || '-10',
+                yMax: (yMaxInput && yMaxInput.value) || '10'
+            },
+            parametric: {
+                xExpr: (document.getElementById('xParamInput') || {}).value || '',
+                yExpr: (document.getElementById('yParamInput') || {}).value || '',
+                tMin: (document.getElementById('tMinInput') || {}).value || '-6.28',
+                tMax: (document.getElementById('tMaxInput') || {}).value || '6.28'
+            },
+            polar: {
+                rExpr: (document.getElementById('rInput') || {}).value || '',
+                thetaMin: (document.getElementById('thetaMinInput') || {}).value || '0',
+                thetaMax: (document.getElementById('thetaMaxInput') || {}).value || '6.28'
+            },
+            '3d': {
+                expr: (document.getElementById('surfaceInput') || {}).value || '',
+                xMin: (document.getElementById('xMin3D') || {}).value || '-5',
+                xMax: (document.getElementById('xMax3D') || {}).value || '5',
+                yMin: (document.getElementById('yMin3D') || {}).value || '-5',
+                yMax: (document.getElementById('yMax3D') || {}).value || '5',
+                resolution: (document.getElementById('resolution3D') || {}).value || '50'
+            },
+            analysis: {
+                zeros: (document.getElementById('zerosCheckbox') || {}).checked || false,
+                extrema: (document.getElementById('extremaCheckbox') || {}).checked || false,
+                inflections: (document.getElementById('inflectionsCheckbox') || {}).checked || false,
+                intersections: (document.getElementById('intersectionsCheckbox') || {}).checked || false,
+                derivative: (document.getElementById('derivativePlotCheckbox') || {}).checked || false
+            },
+            params: collectScope()
+        };
+        
+        // Generate label based on mode and expression
+        if (mode === 'cartesian') {
+            snapshot.label = snapshot.cartesian.expr1 || 'f(x)';
+        } else if (mode === 'parametric') {
+            snapshot.label = 'parametric';
+        } else if (mode === 'polar') {
+            snapshot.label = `r(θ) = ${snapshot.polar.rExpr || '...'}`.substring(0, 30);
+        } else if (mode === '3d') {
+            snapshot.label = `z(x,y) = ${snapshot['3d'].expr || '...'}`.substring(0, 30);
+        }
+        
+        console.log('Captured snapshot:', snapshot);
+        return snapshot;
+    }
+
+    // Add snapshot to history
+    function addToHistory(snapshot) {
+        plotHistory.push(snapshot);
+        if (plotHistory.length > MAX_HISTORY_ITEMS) {
+            plotHistory.shift(); // Remove oldest
+        }
+        saveHistory();
+        renderHistoryList();
+    }
+
+    // Restore state from snapshot
+    function restoreSnapshot(snapshot) {
+        if (!snapshot) return;
+        
+        // Set mode
+        if (plotMode) plotMode.value = snapshot.mode;
+        
+        // Restore data based on mode
+        if (snapshot.mode === 'cartesian') {
+            functionInput.value = snapshot.cartesian.expr1;
+            function2Input.value = snapshot.cartesian.expr2;
+            xMinInput.value = snapshot.cartesian.xMin;
+            xMaxInput.value = snapshot.cartesian.xMax;
+            yMinInput.value = snapshot.cartesian.yMin;
+            yMaxInput.value = snapshot.cartesian.yMax;
+        } else if (snapshot.mode === 'parametric') {
+            const xParam = document.getElementById('xParamInput');
+            const yParam = document.getElementById('yParamInput');
+            const tMin = document.getElementById('tMinInput');
+            const tMax = document.getElementById('tMaxInput');
+            if (xParam) xParam.value = snapshot.parametric.xExpr;
+            if (yParam) yParam.value = snapshot.parametric.yExpr;
+            if (tMin) tMin.value = snapshot.parametric.tMin;
+            if (tMax) tMax.value = snapshot.parametric.tMax;
+        } else if (snapshot.mode === 'polar') {
+            const rInput = document.getElementById('rInput');
+            const thetaMin = document.getElementById('thetaMinInput');
+            const thetaMax = document.getElementById('thetaMaxInput');
+            if (rInput) rInput.value = snapshot.polar.rExpr;
+            if (thetaMin) thetaMin.value = snapshot.polar.thetaMin;
+            if (thetaMax) thetaMax.value = snapshot.polar.thetaMax;
+        } else if (snapshot.mode === '3d') {
+            const surface = document.getElementById('surfaceInput');
+            const xMin3D = document.getElementById('xMin3D');
+            const xMax3D = document.getElementById('xMax3D');
+            const yMin3D = document.getElementById('yMin3D');
+            const yMax3D = document.getElementById('yMax3D');
+            const res3D = document.getElementById('resolution3D');
+            if (surface) surface.value = snapshot['3d'].expr;
+            if (xMin3D) xMin3D.value = snapshot['3d'].xMin;
+            if (xMax3D) xMax3D.value = snapshot['3d'].xMax;
+            if (yMin3D) yMin3D.value = snapshot['3d'].yMin;
+            if (yMax3D) yMax3D.value = snapshot['3d'].yMax;
+            if (res3D) res3D.value = snapshot['3d'].resolution;
+        }
+        
+        // Restore analysis checkboxes
+        const zerosCheck = document.getElementById('zerosCheckbox');
+        const extremaCheck = document.getElementById('extremaCheckbox');
+        const inflectionsCheck = document.getElementById('inflectionsCheckbox');
+        const intersectionsCheck = document.getElementById('intersectionsCheckbox');
+        const derivativeCheck = document.getElementById('derivativePlotCheckbox');
+        
+        if (zerosCheck) zerosCheck.checked = snapshot.analysis.zeros;
+        if (extremaCheck) extremaCheck.checked = snapshot.analysis.extrema;
+        if (inflectionsCheck) inflectionsCheck.checked = snapshot.analysis.inflections;
+        if (intersectionsCheck) intersectionsCheck.checked = snapshot.analysis.intersections;
+        if (derivativeCheck) derivativeCheck.checked = snapshot.analysis.derivative;
+        
+        // Restore parameters
+        if (snapshot.params && typeof snapshot.params === 'object') {
+            Object.keys(snapshot.params).forEach(name => {
+                const slider = document.getElementById(`slider-${name}`);
+                const label = document.getElementById(`label-${name}`);
+                if (slider) {
+                    slider.value = snapshot.params[name];
+                    if (label) label.textContent = Number(snapshot.params[name]).toFixed(2);
+                }
+            });
+        }
+        
+        // Update mode visibility
+        updateModeVisibility();
+        
+        // Trigger re-detection of params and replot
+        paramsUpdater();
+        
+        // Small delay to let UI settle, then plot
+        setTimeout(() => {
+            if (plotButton) plotButton.click();
+        }, 100);
+    }
+
+    // Render history list
+    function renderHistoryList() {
+        if (!historyList) {
+            console.warn('historyList element not found!');
+            return;
+        }
+        
+        console.log('Rendering history, items:', plotHistory.length);
+        
+        if (plotHistory.length === 0) {
+            historyList.innerHTML = '<div style="text-align:center;color:#999;font-size:11px;padding:10px;">Brak historii</div>';
+            return;
+        }
+        
+        // Reverse to show newest first
+        const reversed = plotHistory.slice().reverse();
+        
+        console.log('Reversed history:', reversed);
+        
+        const htmlContent = reversed.map((snap, idx) => {
+            console.log(`Rendering snap ${idx}:`, snap);
+            const modeEmoji = { cartesian: '📊', parametric: '〰️', polar: '🎯', '3d': '📦' }[snap.mode] || '📈';
+            const label = (snap.label || 'Wykres').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const timeStr = snap.timeStr || 'brak czasu';
+            const html = `<div class="history-item" data-id="${snap.id}">
+    <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+        <div style="flex:1;overflow:hidden;margin-right:8px;min-width:0;">
+            <strong>${modeEmoji} ${label}</strong>
+            <div style="font-size:10px;color:#666;margin-top:2px;">${timeStr}</div>
+        </div>
+        <button class="history-delete" data-id="${snap.id}" onclick="event.stopPropagation();" title="Usuń">✕</button>
+    </div>
+</div>`;
+            console.log(`HTML for snap ${idx}:`, html);
+            return html;
+        }).join('');
+        
+        console.log('Final HTML:', htmlContent);
+        historyList.innerHTML = htmlContent;
+        
+        // Add click listeners to restore
+        historyList.querySelectorAll('.history-item').forEach(item => {
+            const id = parseInt(item.dataset.id);
+            item.addEventListener('click', (e) => {
+                if (e.target.classList.contains('history-delete')) return;
+                const snap = plotHistory.find(s => s.id === id);
+                if (snap) restoreSnapshot(snap);
+            });
+        });
+        
+        // Add delete listeners
+        historyList.querySelectorAll('.history-delete').forEach(btn => {
+            const id = parseInt(btn.dataset.id);
+            btn.addEventListener('click', () => {
+                plotHistory = plotHistory.filter(s => s.id !== id);
+                saveHistory();
+                renderHistoryList();
+            });
+        });
+    }
+
+    // Clear history button
+    if (clearHistoryButton) {
+        clearHistoryButton.addEventListener('click', () => {
+            if (confirm('Czy na pewno chcesz wyczyścić całą historię?')) {
+                plotHistory = [];
+                saveHistory();
+                renderHistoryList();
+            }
+        });
+    }
+
+    // Load history on startup
+    loadHistory();
+    
+    // === KONIEC HISTORII ===
+
     // Funkcja pomocnicza do wykrycia okresowości funkcji
     function detectPeriodicity(compiled, maxTest = 100, scope = {}) {
         const samples = [];
@@ -2877,6 +3162,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 calcWorker.addEventListener('message', onMessage);
                 calcWorker.postMessage({ type: 'compute', payload });
+                
+                // Save to history after successful plot initiation
+                const snapshot = captureSnapshot();
+                addToHistory(snapshot);
+                
                 return; // wait for worker to respond
             }
 

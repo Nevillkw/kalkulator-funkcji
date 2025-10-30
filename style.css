@@ -175,6 +175,12 @@ textarea {
     box-sizing: border-box;
 }
 
+/* Placeholder visibility */
+input::placeholder {
+    color: #9aa0a6;
+    opacity: 1;
+}
+
 .mode-helper {
     margin-top: 6px;
     font-size: 0.85em;
@@ -212,24 +218,28 @@ textarea {
 }
 
 .function-field input {
-    flex: 1;
-    padding: 2px 2px;
+    flex: 1 1 55%;
+    min-width: 180px;
+    padding: 4px 6px;
     font-size: 15px;
     border: none;
     font-family: 'Consolas', monospace;
-    background: transparent;
-    outline: none;;
+    background: #ffffff;
+    color: #212529;
+    outline: none;
+    line-height: 1.4;
+    border-radius: 4px;
 }
 
 .function-field input:focus {
-    background: rgba(255,255,255,0.5);
+    background: #ffffff;
 }
 
 .color-indicator {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    margin-left: 4px;
+    margin-right: 6px;
 }
 
 .quick-functions {
@@ -237,6 +247,43 @@ textarea {
     gap: 6px;
     flex-wrap: wrap;
     margin: 8px 0;
+}
+
+/* Compact inline toolbar next to inputs */
+.inline-presets {
+    margin: 0;
+    gap: 4px;
+    flex: 0 0 auto;
+    max-width: 50%;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+.inline-presets span { padding: 2px 6px; font-size: 12px; }
+
+/* Responsive adjustments for narrow containers */
+@media (max-width: 980px) {
+    /* Stack input and presets to avoid horizontal scroll */
+    .function-field { flex-wrap: wrap; gap: 6px; }
+    .function-label { min-width: 48px; }
+    .function-field input { flex: 1 1 100%; min-width: 0; }
+    .inline-presets {
+        order: 3;
+        flex: 1 1 100%;
+        max-width: 100%;
+        white-space: normal;
+        overflow-x: visible;
+        display: flex;
+        flex-wrap: wrap;
+        margin-top: 4px;
+    }
+    .inline-presets span { margin-bottom: 4px; }
+    /* Make axes grid 2 columns on small widths */
+    .axes-4 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .inline-presets span { padding: 2px 5px; font-size: 11px; }
+    .function-field input { font-size: 14px; }
 }
 
 .quick-functions span {
@@ -293,6 +340,37 @@ textarea {
     width: 240px;
     flex-shrink: 0;
 }
+
+/* Right column: chart + results stacked */
+.calculator-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0; /* prevent overflow in flex */
+}
+
+/* Insights (results + history) side by side under the chart */
+.insights { margin-top: 12px; }
+.insights > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #e3f2fd;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    color: #1976d2;
+    font-weight: 700;
+    cursor: pointer;
+}
+.insights-row {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+}
+.insights-row .analysis-results { flex: 1 1 80%; max-width: 80%; margin-top: 0; display:flex; flex-direction:column; }
+.insights-row .history-panel { flex: 0 0 20%; max-width: 20%; }
+.analysis-results #analysisResultsContent { flex: 1 1 auto; overflow: auto; }
 
 .param-controls {
     min-height: 15px;
@@ -363,7 +441,7 @@ textarea {
 }
 
 #myChart {
-    flex: 1;
+    flex: 0 0 auto;
     height: 600px !important;
     border: 2px solid #d0d0d0;
     border-radius: 8px;
@@ -853,4 +931,78 @@ code {
     .calculator-sidebar {
         width: 100%;
     }
+}
+
+/* History list styles */
+#historyList {
+    max-height: 250px;
+    overflow-y: auto;
+    margin-top: 8px;
+    background: white;
+}
+
+.history-item {
+    padding: 8px !important;
+    margin-bottom: 6px !important;
+    min-height: 140px;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    color: #000 !important;
+}
+
+.history-item:hover {
+    background: #e3f2fd !important;
+    border-color: #90caf9 !important;
+}
+
+.history-item strong {
+    color: #1976d2 !important;
+    display: inline !important;
+    margin-bottom: 0 !important;
+    font-weight: 600 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: 12px !important;
+}
+
+.history-item div {
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: #666 !important;
+    display: block !important;
+}
+
+.history-delete {
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+    min-width: 24px;
+    height: 24px;
+    line-height: 20px;
+    text-align: center;
+}
+
+.history-delete:hover {
+    background: #ff5252;
+}
+
+/* If analysis is a <details>, style the summary similarly */
+.analysis-results > summary {
+    color: #1976d2;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
 }
