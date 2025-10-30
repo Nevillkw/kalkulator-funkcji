@@ -466,6 +466,75 @@ self.onmessage = function (ev) {
 		return;
 	}
 	
+	if (msg.type === 'computeAreaBetween') {
+		try {
+			const { expression1, expression2, a, b, scope } = msg.payload || {};
+			if (!expression1 || !expression2) throw new Error('Brak funkcji f₁(x) lub f₂(x).');
+			if (!isFinite(a) || !isFinite(b) || a >= b) throw new Error('Nieprawidłowe granice całkowania dla pola między krzywymi.');
+
+			const node1 = math.parse(expression1);
+			const node2 = math.parse(expression2);
+			const compiled1 = node1.compile();
+			const compiled2 = node2.compile();
+			const scopeObj = scope || {};
+
+			// Trapezoidal integration of |f1 - f2|
+			const steps = 2000;
+			const h = (b - a) / steps;
+			let area = 0;
+			for (let i = 0; i < steps; i++) {
+				const x1 = a + i * h;
+				const x2 = x1 + h;
+				const f1a = safeEval(compiled1, x1, scopeObj);
+				const f2a = safeEval(compiled2, x1, scopeObj);
+				const f1b = safeEval(compiled1, x2, scopeObj);
+				const f2b = safeEval(compiled2, x2, scopeObj);
+				if (isFinite(f1a) && isFinite(f2a) && isFinite(f1b) && isFinite(f2b)) {
+					const yA = Math.abs(f1a - f2a);
+					const yB = Math.abs(f1b - f2b);
+					area += (yA + yB) * 0.5 * h;
+				}
+			}
+
+			const sampleCount = 400;
+			const xSamples = [];
+			const y1Samples = [];
+			const y2Samples = [];
+			for (let i = 0; i <= sampleCount; i++) {
+				const x = a + (i / sampleCount) * (b - a);
+				const y1 = safeEval(compiled1, x, scopeObj);
+				const y2 = safeEval(compiled2, x, scopeObj);
+				if (isFinite(y1) && isFinite(y2)) {
+					xSamples.push(x);
+					y1Samples.push(y1);
+					y2Samples.push(y2);
+				} else {
+					xSamples.push(NaN);
+					y1Samples.push(NaN);
+					y2Samples.push(NaN);
+				}
+			}
+
+			self.postMessage({
+				type: 'areaBetweenResult',
+				payload: {
+					value: area,
+					a,
+					b,
+					xSamples,
+					y1Samples,
+					y2Samples
+				}
+			});
+		} catch (err) {
+			self.postMessage({
+				type: 'error',
+				payload: { message: `Błąd obliczania pola między krzywymi: ${err.message}` }
+			});
+		}
+		return;
+	}
+
 	if (msg.type !== 'compute') return;
 	const { expression, expression2, xMin, xMax, yMin, yMax, initialPoints, options, calculateZeros, calculateExtrema, calculateIntersections, mode } = msg.payload;
 	const opts = Object.assign({ absLimit: 1e5, maxDepth: 16, minStep: Math.abs((xMax - xMin) || 1)/500000, absEps: 1e-3, relEps: 1e-2 }, options || {});
@@ -491,63 +560,69 @@ self.onmessage = function (ev) {
 				}
 			}
 
-			// Compute zeros and extrema for f1 if requested
-			let zeros = [];
-			let extrema = [];
-			let derivString = '';
-			if (calculateZeros) {
+		// Compute zeros and extrema for f1 if requested
+		let zeros = [];
+		let extrema = [];
+		let derivString = '';
+		if (calculateZeros) {
+			const zeroNode = math.parse('0');
+			const compiledZero = zeroNode.compile();
+			zeros = findIntersections(compiled1, compiledZero, xMin, xMax, yMin, yMax, opts.segments || 400, opts, scope);
+		}
+		
+		// Compute extrema independently if requested
+		if (calculateExtrema) {
+			try {
+				const derivNode = math.derivative(expression, 'x');
+				const compiledDeriv = derivNode.compile();
 				const zeroNode = math.parse('0');
 				const compiledZero = zeroNode.compile();
-				zeros = findIntersections(compiled1, compiledZero, xMin, xMax, yMin, yMax, opts.segments || 400, opts, scope);
-			}
-			if (calculateExtrema) {
+				// Find roots of derivative == 0 (extrema)
+				extrema = findIntersections(compiledDeriv, compiledZero, xMin, xMax, yMin, yMax, opts.segments || 400, opts, scope);
+				// Second derivative for classification
+				let compiledSecond = null;
 				try {
-					const derivNode = math.derivative(expression, 'x');
-					try { derivString = derivNode.toString(); } catch (e) { derivString = ''; }
-					const compiledDeriv = derivNode.compile();
-					const zeroNode = math.parse('0');
-					const compiledZero = zeroNode.compile();
-					// Find roots of derivative == 0 (extrema)
-					extrema = findIntersections(compiledDeriv, compiledZero, xMin, xMax, yMin, yMax, opts.segments || 400, opts, scope);
-					// Second derivative for classification
-					let compiledSecond = null;
-					try {
-						const secondNode = math.derivative(derivNode, 'x');
-						compiledSecond = secondNode.compile();
-					} catch (_) { compiledSecond = null; }
-					const EPS = 1e-6;
-					// For extrema we want the y value on the original function and a type based on f''(x)
-					extrema = extrema.map(p => {
-						const yVal = safeEval(compiled1, p.x, scope);
-						let type = 'unknown';
-						let f2 = NaN;
-						if (compiledSecond) {
-							try { f2 = compiledSecond.evaluate(Object.assign({ x: p.x }, scope)); } catch (_) { f2 = NaN; }
-							if (isFinite(f2)) {
-								if (f2 > EPS) type = 'min';
-								else if (f2 < -EPS) type = 'max';
-								else type = 'flat';
-							}
+					const secondNode = math.derivative(derivNode, 'x');
+					compiledSecond = secondNode.compile();
+				} catch (_) { compiledSecond = null; }
+				const EPS = 1e-6;
+				// For extrema we want the y value on the original function and a type based on f''(x)
+				extrema = extrema.map(p => {
+					const yVal = safeEval(compiled1, p.x, scope);
+					let type = 'unknown';
+					let f2 = NaN;
+					if (compiledSecond) {
+						try { f2 = compiledSecond.evaluate(Object.assign({ x: p.x }, scope)); } catch (_) { f2 = NaN; }
+						if (isFinite(f2)) {
+							if (f2 > EPS) type = 'min';
+							else if (f2 < -EPS) type = 'max';
+							else type = 'flat';
 						}
-						return { x: p.x, y: yVal, type, f2 };
-					});
-				} catch (e) {
-					// If derivative parsing failed, leave extrema empty
-					extrema = [];
-				}
+					}
+					return { x: p.x, y: yVal, type, f2 };
+				});
+			} catch (e) {
+				// If extrema computation failed, leave extrema empty
+				extrema = [];
 			}
-
-			// Optionally compute derivative samples for plotting
-			let derivativeSamples = null;
-			if (msg.payload && msg.payload.calculateDerivativePlot) {
-				try {
-					const derivNode = math.derivative(expression, 'x');
-					const compiledDeriv = derivNode.compile();
-					derivativeSamples = generateSamples(compiledDeriv, xMin, xMax, initialPoints || 50, opts, scope);
-				} catch (_) { derivativeSamples = null; }
+		}
+		
+		// Compute derivative only if checkbox is checked
+		let derivativeSamples = null;
+		if (msg.payload && msg.payload.calculateDerivativePlot) {
+			try {
+				const derivNode = math.derivative(expression, 'x');
+				try { derivString = derivNode.toString(); } catch (e) { derivString = ''; }
+				const compiledDeriv = derivNode.compile();
+				
+				// Compute derivative samples for plotting
+				derivativeSamples = generateSamples(compiledDeriv, xMin, xMax, initialPoints || 50, opts, scope);
+			} catch (e) {
+				// If derivative parsing failed, leave derivative empty
+				derivString = '';
+				derivativeSamples = null;
 			}
-
-			self.postMessage({ type: 'result', payload: { mode: 'cartesian', samples1, samples2, intersections, zeros, extrema, derivative: derivString, derivativeSamples } });
+		}			self.postMessage({ type: 'result', payload: { mode: 'cartesian', samples1, samples2, intersections, zeros, extrema, derivative: derivString, derivativeSamples } });
 			return;
 		}
 
@@ -578,7 +653,58 @@ self.onmessage = function (ev) {
 						ys.push(null);
 					}
 				}
-				self.postMessage({ type: 'result', payload: { mode: 'parametric', samples1: { x: xs, y: ys }, tMin, tMax } });
+				
+				// Compute derivatives dx/dt, dy/dt only if checkbox is checked
+				let dxString = '';
+				let dyString = '';
+				let derivativeSamplesX = null;
+				let derivativeSamplesY = null;
+				
+				if (msg.payload && msg.payload.calculateDerivativePlot && xExpr && yExpr) {
+					try {
+						const dxNode = math.derivative(xExpr, 't');
+						dxString = dxNode.toString();
+						const dyNode = math.derivative(yExpr, 't');
+						dyString = dyNode.toString();
+						
+						// Sample dx/dt and dy/dt for plotting
+						try {
+							const compiledDX = dxNode.compile();
+							const compiledDY = dyNode.compile();
+							const dxVals = [];
+							const dyVals = [];
+							const tVals = [];
+							for (let i = 0; i <= points; i++) {
+								const t = tMin + i * dt;
+								tVals.push(t);
+								try {
+									const dxv = compiledDX.evaluate(Object.assign({ t }, scope));
+									const dyv = compiledDY.evaluate(Object.assign({ t }, scope));
+									dxVals.push(isFinite(dxv) ? dxv : null);
+									dyVals.push(isFinite(dyv) ? dyv : null);
+								} catch (_) {
+									dxVals.push(null);
+									dyVals.push(null);
+								}
+							}
+							derivativeSamplesX = { t: tVals, value: dxVals };
+							derivativeSamplesY = { t: tVals, value: dyVals };
+						} catch (_) { /* ignore sampling errors */ }
+					} catch (_) { /* derivative computation failed */ }
+				}
+				
+				self.postMessage({ 
+					type: 'result', 
+					payload: { 
+						mode: 'parametric', 
+						samples1: { x: xs, y: ys }, 
+						tMin, 
+						tMax,
+						derivative: { dx: dxString, dy: dyString },
+						derivativeSamplesX,
+						derivativeSamplesY
+					} 
+				});
 			} catch (e) {
 				self.postMessage({ type: 'error', payload: { message: e.message || String(e) } });
 			}
@@ -610,7 +736,51 @@ self.onmessage = function (ev) {
 						thetas.push(null);
 					}
 				}
-				self.postMessage({ type: 'result', payload: { mode: 'polar', polar: true, r: rs, theta: thetas, rExpr, tMin, tMax } });
+				
+				// Compute derivative dr/dt only if checkbox is checked
+				let drString = '';
+				let derivativeSamplesR = null;
+				
+				if (msg.payload && msg.payload.calculateDerivativePlot && rExpr) {
+					try {
+						const drNode = math.derivative(rExpr, 't');
+						drString = drNode.toString();
+						
+						// Sample dr/dt for plotting
+						try {
+							const compiledDR = drNode.compile();
+							const drVals = [];
+							const thetaVals = [];
+							for (let i = 0; i <= points; i++) {
+								const t = tMin + i * dt;
+								const thetaDeg = (t * 180) / Math.PI;
+								thetaVals.push(thetaDeg);
+								try {
+									const drv = compiledDR.evaluate(Object.assign({ t }, scope));
+									drVals.push(isFinite(drv) ? drv : null);
+								} catch (_) {
+									drVals.push(null);
+								}
+							}
+							derivativeSamplesR = { theta: thetaVals, value: drVals };
+						} catch (_) { /* ignore sampling errors */ }
+					} catch (_) { /* derivative computation failed */ }
+				}
+				
+				self.postMessage({ 
+					type: 'result', 
+					payload: { 
+						mode: 'polar', 
+						polar: true, 
+						r: rs, 
+						theta: thetas, 
+						rExpr, 
+						tMin, 
+						tMax,
+						derivative: drString,
+						derivativeSamplesR
+					} 
+				});
 			} catch (e) {
 				self.postMessage({ type: 'error', payload: { message: e.message || String(e) } });
 			}
@@ -631,7 +801,15 @@ self.onmessage = function (ev) {
                 const resolution = msg.payload.resolution || 50;
 				const scope = msg.payload.scope || {};
 				const data = generate3DSurface(expr, xRange, yRange, resolution, scope);
-                self.postMessage({ type: 'result', payload: { mode: '3d', ...data } });
+				// Do not compute or return gradient for 3D mode (disabled by request)
+                self.postMessage({ 
+					type: 'result', 
+					payload: { 
+						mode: '3d', 
+						...data,
+						// derivative removed
+					} 
+				});
             } catch (e) {
                 self.postMessage({ type: 'error', payload: { message: e.message || String(e) } });
             }

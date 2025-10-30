@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kalkulator Funkcji Matematycznych</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -215,12 +216,12 @@
                                     <input type="checkbox" id="intersectionsCheckbox">&nbsp;Punkty przecięcia
                                 </label>
                                 <label style="display:block;margin-bottom:8px;">
-                                    <input type="checkbox" id="derivativePlotCheckbox">&nbsp;Rysuj/licz pochodną
+                                    <input type="checkbox" id="derivativePlotCheckbox">&nbsp;<span id="derivativeLabelText">Rysuj/licz pochodną</span>
                                 </label>
                             </div>
                             
                             <div class="integral-controls" style="border-top:1px solid #dee2e6;padding-top:8px;">
-                                <label style="display:block;margin-bottom:6px;font-weight:500;font-size:12px;">Całka oznaczona:</label>
+                                <label style="display:block;margin-bottom:6px;font-weight:500;font-size:12px;"><span id="integralLabelText">Całka oznaczona:</span></label>
                                 <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
                                     <label for="integralA" style="font-size:12px;">a:</label>
                                     <input type="text" id="integralA" value="0" style="width:80px;padding:4px;font-size:12px;" placeholder="np. 0 lub pi/2">
@@ -231,6 +232,18 @@
                                 <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;">
                                     <input type="checkbox" id="showIntegralLabel"> Pokaż wartość całki na wykresie
                                 </label>
+                            </div>
+                            
+                            <!-- Pole między krzywymi (tylko kartezjański) -->
+                            <div class="between-curves-controls" style="border-top:1px solid #dee2e6;padding-top:8px;margin-top:8px;">
+                                <label style="display:block;margin-bottom:6px;font-weight:500;font-size:12px;">Pole między krzywymi:</label>
+                                <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+                                    <label for="betweenA" style="font-size:12px;">a:</label>
+                                    <input type="text" id="betweenA" value="0" style="width:80px;padding:4px;font-size:12px;" placeholder="np. -1">
+                                    <label for="betweenB" style="font-size:12px;">b:</label>
+                                    <input type="text" id="betweenB" value="1" style="width:80px;padding:4px;font-size:12px;" placeholder="np. 1">
+                                </div>
+                                <button id="calculateBetweenButton" style="width:100%;font-size:12px;padding:6px;">Oblicz i zacieniuj</button>
                             </div>
                         </div>
                     </details>
@@ -373,6 +386,8 @@
             });
         }
     </script>
-    <script src="script.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script src="script.js?v=20251030"></script>
 </body>
 </html>

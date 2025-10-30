@@ -1,7 +1,7 @@
 // Global variables for data traces
 let loadedDataTrace = null; // Trace dla importowanych danych 2D (CSV/API)
 let loadedData3DTrace = null; // Trace dla importowanych danych 3D (CSV/API)
-let currentAnalysisData = { zeros: [], extrema: [], intersections: [], integral: null, derivative: '' }; // Initialize early for 3D access
+let currentAnalysisData = { zeros: [], extrema: [], intersections: [], integral: null, derivative: '', areaBetween: null }; // Initialize early for 3D access
 
 // Funkcja do renderowania wykresu 3D
 function handle3DPlot(data) {
@@ -179,8 +179,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const plotMode = document.getElementById('plotMode');
     const samplingPreset = document.getElementById('samplingPreset');
     const calculateIntegralButton = document.getElementById('calculateIntegralButton');
+    let calculateBetweenButton = document.getElementById('calculateBetweenButton');
     const integralA = document.getElementById('integralA');
     const integralB = document.getElementById('integralB');
+    let betweenA = document.getElementById('betweenA');
+    let betweenB = document.getElementById('betweenB');
+
+    // Fallback: dynamically inject "Pole między krzywymi" controls if missing (older HTML)
+    let betweenCurvesControls = document.querySelector('.between-curves-controls');
+    if (!betweenCurvesControls || !calculateBetweenButton || !betweenA || !betweenB) {
+        const analysisOptions = document.querySelector('.analysis-options');
+        const groupContent = analysisOptions ? analysisOptions.parentElement : null;
+        if (groupContent) {
+            betweenCurvesControls = document.createElement('div');
+            betweenCurvesControls.className = 'between-curves-controls';
+            betweenCurvesControls.style.borderTop = '1px solid #dee2e6';
+            betweenCurvesControls.style.paddingTop = '8px';
+            betweenCurvesControls.style.marginTop = '8px';
+            betweenCurvesControls.innerHTML = `
+                <label style="display:block;margin-bottom:6px;font-weight:500;font-size:12px;">Pole między krzywymi:</label>
+                <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+                    <label for="betweenA" style="font-size:12px;">a:</label>
+                    <input type="text" id="betweenA" value="0" style="width:80px;padding:4px;font-size:12px;" placeholder="np. -1">
+                    <label for="betweenB" style="font-size:12px;">b:</label>
+                    <input type="text" id="betweenB" value="1" style="width:80px;padding:4px;font-size:12px;" placeholder="np. 1">
+                </div>
+                <button id="calculateBetweenButton" style="width:100%;font-size:12px;padding:6px;">Oblicz i zacieniuj</button>
+            `;
+            groupContent.appendChild(betweenCurvesControls);
+
+            calculateBetweenButton = betweenCurvesControls.querySelector('#calculateBetweenButton');
+            betweenA = betweenCurvesControls.querySelector('#betweenA');
+            betweenB = betweenCurvesControls.querySelector('#betweenB');
+        }
+    }
     const analysisResults = document.getElementById('analysisResults');
     const analysisResultsContent = document.getElementById('analysisResultsContent');
     const dataInput = document.getElementById('dataInput');
@@ -290,153 +322,151 @@ document.addEventListener('DOMContentLoaded', () => {
         // Inicjalizacja przy załadowaniu
         updateModeUI(plotMode.value);
     }
-        const presetButtons = document.querySelectorAll('.presets button');
-    
-        // Przyciski nawigacji
-        const zoomInBtn = document.getElementById('zoomIn');
-        const zoomOutBtn = document.getElementById('zoomOut');
-        const panLeftBtn = document.getElementById('panLeft');
-        const panRightBtn = document.getElementById('panRight');
-        const panUpBtn = document.getElementById('panUp');
-        const panDownBtn = document.getElementById('panDown');
-        const autoFitBtn = document.getElementById('autoFit');
+    const presetButtons = document.querySelectorAll('.presets button');
 
-        // Konfiguracja nawigacji
-        const ZOOM_FACTOR = 0.1;
-        const PAN_FACTOR = 0.2;
-        // Plot mode elements (cartesian/parametric/polar)
-        const plotModeSelect = document.getElementById('plotMode');
+    // Przyciski nawigacji
+    const zoomInBtn = document.getElementById('zoomIn');
+    const zoomOutBtn = document.getElementById('zoomOut');
+    const panLeftBtn = document.getElementById('panLeft');
+    const panRightBtn = document.getElementById('panRight');
+    const panUpBtn = document.getElementById('panUp');
+    const panDownBtn = document.getElementById('panDown');
+    const autoFitBtn = document.getElementById('autoFit');
+
+    // Konfiguracja nawigacji
+    const ZOOM_FACTOR = 0.1;
+    const PAN_FACTOR = 0.2;
+
+    // Plot mode elements (cartesian/parametric/polar)
+    const plotModeSelect = document.getElementById('plotMode');
     const parametricInputs = document.getElementById('parametricInputs');
     const polarInputs = document.getElementById('polarInputs');
     const cartesianInputs = document.getElementById('cartesianInputs');
-        const xParamInput = document.getElementById('xParamInput');
-        const yParamInput = document.getElementById('yParamInput');
-        const tMinInput = document.getElementById('tMinInput');
-        const tMaxInput = document.getElementById('tMaxInput');
-        const rInput = document.getElementById('rInput');
-        const thetaMinInput = document.getElementById('thetaMinInput');
-        const thetaMaxInput = document.getElementById('thetaMaxInput');
+    const xParamInput = document.getElementById('xParamInput');
+    const yParamInput = document.getElementById('yParamInput');
+    const tMinInput = document.getElementById('tMinInput');
+    const tMaxInput = document.getElementById('tMaxInput');
+    const rInput = document.getElementById('rInput');
+    const thetaMinInput = document.getElementById('thetaMinInput');
+    const thetaMaxInput = document.getElementById('thetaMaxInput');
 
-        function updateModeVisibility() {
-            const mode = (plotModeSelect && plotModeSelect.value) || 'cartesian';
+    function updateModeVisibility() {
+        const mode = (plotModeSelect && plotModeSelect.value) || 'cartesian';
+
         if (parametricInputs) parametricInputs.style.display = (mode === 'parametric') ? 'block' : 'none';
         if (polarInputs) polarInputs.style.display = (mode === 'polar') ? 'block' : 'none';
         if (cartesianInputs) cartesianInputs.style.display = (mode === 'cartesian') ? 'block' : 'none';
-            
-            // Show/hide analysis checkboxes based on mode
-            const zerosCheckbox = document.getElementById('zerosCheckbox');
-            const extremaCheckbox = document.getElementById('extremaCheckbox');
-            const intersectionsCheckbox = document.getElementById('intersectionsCheckbox');
-            const derivativePlotCheckbox = document.getElementById('derivativePlotCheckbox');
-            const integralControls = document.querySelector('.integral-controls');
-            
-            if (mode === 'cartesian') {
-                // Cartesian: all analysis options available
-                if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'block';
-                if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'block';
-                if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'block';
-                if (derivativePlotCheckbox) {
-                    derivativePlotCheckbox.parentElement.style.display = 'block';
-                    updateDerivativeLabel(derivativePlotCheckbox, 'Rysuj/licz pochodną f\'(x)');
-                }
-                if (integralControls) {
-                    integralControls.style.display = 'block';
-                    updateIntegralLabel(mode);
-                }
-            } else if (mode === 'parametric') {
-                // Parametric: derivative and curve integral available
-                if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
-                if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
-                if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
-                if (derivativePlotCheckbox) {
-                    derivativePlotCheckbox.parentElement.style.display = 'block';
-                    updateDerivativeLabel(derivativePlotCheckbox, 'Rysuj/licz dx/dt, dy/dt');
-                }
-                if (integralControls) {
-                    integralControls.style.display = 'block';
-                    updateIntegralLabel(mode);
-                }
-            } else if (mode === 'polar') {
-                // Polar: derivative and polar area integral available
-                if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
-                if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
-                if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
-                if (derivativePlotCheckbox) {
-                    derivativePlotCheckbox.parentElement.style.display = 'block';
-                    updateDerivativeLabel(derivativePlotCheckbox, 'Rysuj/licz dr/dθ');
-                }
-                if (integralControls) {
-                    integralControls.style.display = 'block';
-                    updateIntegralLabel(mode);
-                }
-            } else if (mode === '3d') {
-                // 3D: derivative disabled
-                if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
-                if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
-                if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
-                if (derivativePlotCheckbox) derivativePlotCheckbox.parentElement.style.display = 'none';
-                if (integralControls) integralControls.style.display = 'none';
+
+    const zerosCheckbox = document.getElementById('zerosCheckbox');
+    const extremaCheckbox = document.getElementById('extremaCheckbox');
+    const intersectionsCheckbox = document.getElementById('intersectionsCheckbox');
+    const derivativePlotCheckbox = document.getElementById('derivativePlotCheckbox');
+    const integralControls = document.querySelector('.integral-controls');
+    const betweenCurvesControls = document.querySelector('.between-curves-controls');
+
+        if (mode === 'cartesian') {
+            if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'block';
+            if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'block';
+            if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'block';
+            if (derivativePlotCheckbox) {
+                derivativePlotCheckbox.parentElement.style.display = 'block';
+                updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz pochodną f'(x)");
             }
-            
-            // Helper function to update derivative checkbox label
-            function updateDerivativeLabel(checkbox, newText) {
-                const label = checkbox.parentElement;
-                // Find and update all text nodes (replace them with new text)
-                let textNodeFound = false;
-                for (let i = label.childNodes.length - 1; i >= 0; i--) {
-                    if (label.childNodes[i].nodeType === Node.TEXT_NODE) {
-                        if (!textNodeFound) {
-                            // Replace first text node found (starting from end)
-                            label.childNodes[i].textContent = '\u00A0' + newText;
-                            textNodeFound = true;
-                        } else {
-                            // Remove any additional text nodes
-                            label.removeChild(label.childNodes[i]);
-                        }
-                    }
-                }
+            if (integralControls) {
+                integralControls.style.display = 'block';
+                updateIntegralLabel(mode);
             }
-            
-            // Helper function to update integral section labels based on mode
-            function updateIntegralLabel(mode) {
-                const integralLabel = document.querySelector('.integral-controls label[for="integralA"]');
-                const integralButton = document.getElementById('calculateIntegralButton');
-                
-                if (mode === 'cartesian') {
-                    if (integralLabel && integralLabel.previousElementSibling) {
-                        integralLabel.previousElementSibling.textContent = 'Całka oznaczona:';
-                    }
-                    if (integralButton) {
-                        integralButton.textContent = 'Oblicz i zacieniuj';
-                    }
-                } else if (mode === 'parametric') {
-                    const labelElement = document.querySelector('.integral-controls > label');
-                    if (labelElement) {
-                        labelElement.textContent = 'Całka krzywoliniowa (t):';
-                    }
-                    if (integralButton) {
-                        integralButton.textContent = 'Oblicz długość krzywej';
-                    }
-                } else if (mode === 'polar') {
-                    const labelElement = document.querySelector('.integral-controls > label');
-                    if (labelElement) {
-                        labelElement.textContent = 'Pole obszaru (θ):';
-                    }
-                    if (integralButton) {
-                        integralButton.textContent = 'Oblicz pole';
-                    }
-                }
+            if (betweenCurvesControls) {
+                betweenCurvesControls.style.display = 'block';
             }
-            
-            // rebuild param controls for the newly selected mode (paramsUpdater is defined later)
-            try {
-                if (typeof paramsUpdater !== 'undefined' && paramsUpdater) paramsUpdater();
-            } catch (e) { /* paramsUpdater not ready yet; will be initialized shortly */ }
+        } else if (mode === 'parametric') {
+            if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
+            if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
+            if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
+            if (derivativePlotCheckbox) {
+                derivativePlotCheckbox.parentElement.style.display = 'block';
+                updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz dx/dt, dy/dt");
+            }
+            if (integralControls) {
+                integralControls.style.display = 'block';
+                updateIntegralLabel(mode);
+            }
+            if (betweenCurvesControls) {
+                betweenCurvesControls.style.display = 'none';
+            }
+        } else if (mode === 'polar') {
+            if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
+            if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
+            if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
+            if (derivativePlotCheckbox) {
+                derivativePlotCheckbox.parentElement.style.display = 'block';
+                updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz dr/dθ");
+            }
+            if (integralControls) {
+                integralControls.style.display = 'block';
+                updateIntegralLabel(mode);
+            }
+            if (betweenCurvesControls) {
+                betweenCurvesControls.style.display = 'none';
+            }
+        } else if (mode === '3d') {
+            if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
+            if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
+            if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
+            if (derivativePlotCheckbox) derivativePlotCheckbox.parentElement.style.display = 'none';
+            if (integralControls) integralControls.style.display = 'none';
+            if (betweenCurvesControls) betweenCurvesControls.style.display = 'none';
         }
-        if (plotModeSelect) {
-            plotModeSelect.addEventListener('change', updateModeVisibility);
-            updateModeVisibility();
+
+        function updateDerivativeLabel(checkbox, newText) {
+            const spanElement = document.getElementById('derivativeLabelText');
+            if (spanElement) {
+                spanElement.textContent = newText;
+            }
         }
+
+        function updateIntegralLabel(selectedMode) {
+            const integralLabelSpan = document.getElementById('integralLabelText');
+            const integralButton = document.getElementById('calculateIntegralButton');
+
+            if (selectedMode === 'cartesian') {
+                if (integralLabelSpan) {
+                    integralLabelSpan.textContent = 'Całka oznaczona:';
+                }
+                if (integralButton) {
+                    integralButton.textContent = 'Oblicz i zacieniuj';
+                }
+            } else if (selectedMode === 'parametric') {
+                if (integralLabelSpan) {
+                    integralLabelSpan.textContent = 'Całka krzywoliniowa (t):';
+                }
+                if (integralButton) {
+                    integralButton.textContent = 'Oblicz długość krzywej';
+                }
+            } else if (selectedMode === 'polar') {
+                if (integralLabelSpan) {
+                    integralLabelSpan.textContent = 'Pole obszaru (θ):';
+                }
+                if (integralButton) {
+                    integralButton.textContent = 'Oblicz pole';
+                }
+                if (betweenCurvesControls) {
+                    betweenCurvesControls.style.display = 'none';
+                }
+            }
+        }
+
+        try {
+            if (typeof paramsUpdater !== 'undefined' && paramsUpdater) paramsUpdater();
+        } catch (e) {
+            // paramsUpdater not ready yet; will be initialized shortly
+        }
+    }
+
+    if (plotModeSelect) {
+        plotModeSelect.addEventListener('change', updateModeVisibility);
+        updateModeVisibility();
+    }
 
     // Helper: zaokrąglanie do 2 miejsc po przecinku
     function roundRange(value) {
@@ -493,7 +523,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // currentAnalysisData is now declared globally at top of file for 3D access
     let currentPolarIntegralTraces = null; // polar wedge and optional label marker
     let currentParametricHighlightTrace = null; // highlighted segment for t in [a,b]
-    
+    let currentAreaBetweenTrace = null;
+
     // Calculator worker - handles heavy computations
     let calcWorker = null;
     try {
@@ -501,6 +532,23 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {
         console.warn('Nie udało się utworzyć Web Workera:', e);
         calcWorker = null;
+    }
+
+    // Helper function to render math formulas with KaTeX
+    function renderMathFormula(formula) {
+        if (typeof katex === 'undefined') {
+            // KaTeX not loaded yet, return plain text
+            return formula;
+        }
+        try {
+            return katex.renderToString(formula, {
+                throwOnError: false,
+                displayMode: false
+            });
+        } catch (e) {
+            // If KaTeX fails, return original formula
+            return formula;
+        }
     }
 
     // Function to display analysis results
@@ -514,10 +562,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (derivative) {
             if (derivative.dx && derivative.dy) {
                 // Parametric mode
-                parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Pochodne parametryczne:</strong><br><span style="font-size:13px;color:#495057;font-family:Consolas,monospace;">dx/dt = ${derivative.dx}<br>dy/dt = ${derivative.dy}</span></div>`);
+                const dxRendered = renderMathFormula(`\\frac{dx}{dt} = ${derivative.dx}`);
+                const dyRendered = renderMathFormula(`\\frac{dy}{dt} = ${derivative.dy}`);
+                parts.push(`<div style="margin-bottom:10px;line-height:1.8;"><strong style="font-size:14px;color:#2c3e50;">Pochodne parametryczne:</strong><br><span style="font-size:13px;color:#495057;">${dxRendered}</span><br><span style="font-size:13px;color:#495057;">${dyRendered}</span></div>`);
             } else if (derivative.dzDx && derivative.dzDy) {
                 // 3D mode
-                parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Pochodne cząstkowe:</strong><br><span style="font-size:13px;color:#495057;font-family:Consolas,monospace;">∂z/∂x = ${derivative.dzDx}<br>∂z/∂y = ${derivative.dzDy}</span></div>`);
+                const dzDxRendered = renderMathFormula(`\\frac{\\partial z}{\\partial x} = ${derivative.dzDx}`);
+                const dzDyRendered = renderMathFormula(`\\frac{\\partial z}{\\partial y} = ${derivative.dzDy}`);
+                parts.push(`<div style="margin-bottom:10px;line-height:1.8;"><strong style="font-size:14px;color:#2c3e50;">Pochodne cząstkowe:</strong><br><span style="font-size:13px;color:#495057;">${dzDxRendered}</span><br><span style="font-size:13px;color:#495057;">${dzDyRendered}</span></div>`);
             } else if (typeof derivative === 'string' && derivative.trim() !== '') {
                 // String derivative: need to determine if cartesian or polar by checking current mode
                 const modeEl = document.getElementById('plotMode');
@@ -525,10 +577,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (currentMode === 'polar') {
                     // Polar mode
-                    parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Pochodna biegunowa:</strong><br><span style="font-size:13px;color:#495057;font-family:Consolas,monospace;">dr/dθ = ${derivative}</span></div>`);
+                    const drRendered = renderMathFormula(`\\frac{dr}{d\\theta} = ${derivative}`);
+                    parts.push(`<div style="margin-bottom:10px;line-height:1.8;"><strong style="font-size:14px;color:#2c3e50;">Pochodna biegunowa:</strong><br><span style="font-size:13px;color:#495057;">${drRendered}</span></div>`);
                 } else if (currentMode === 'cartesian') {
                     // Cartesian mode
-                    parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Pochodna f₁(x):</strong><br><span style="font-size:13px;color:#495057;font-family:Consolas,monospace;">f'(x) = ${derivative}</span></div>`);
+                    const fPrimeRendered = renderMathFormula(`f'(x) = ${derivative}`);
+                    parts.push(`<div style="margin-bottom:10px;line-height:1.8;"><strong style="font-size:14px;color:#2c3e50;">Pochodna f₁(x):</strong><br><span style="font-size:13px;color:#495057;">${fPrimeRendered}</span></div>`);
                 }
             }
         }
@@ -559,7 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 title = 'Całka ∫ f(x) dx';
                 if (isFinite(integral.a) && isFinite(integral.b)) rangeTxt = `[${integral.a.toFixed(2)}, ${integral.b.toFixed(2)}]`;
             } else if (mode === 'parametric') {
-                title = 'Całka parametryczna ∫ y dx';
+                title = 'Całka krzywoliniowa ∫ y dx';
                 if (isFinite(integral.a) && isFinite(integral.b)) rangeTxt = `t∈[${integral.a.toFixed(2)}, ${integral.b.toFixed(2)}]`;
             } else if (mode === 'polar') {
                 title = 'Pole w biegunowych ½∫ r(θ)² dθ';
@@ -572,6 +626,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const rangeLabel = rangeTxt ? ` ${rangeTxt}` : '';
             parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">${title}${rangeLabel}:</strong><br><span style="font-size:14px;color:#495057;font-weight:600;">${Number(integral.value).toFixed(6)}</span></div>`);
+        }
+        
+        // Display area between curves result
+        if (currentAnalysisData.areaBetween !== null && currentAnalysisData.areaBetween !== undefined) {
+            const { value, a, b } = currentAnalysisData.areaBetween;
+            const title = 'Pole między krzywymi ∫|f₁(x)-f₂(x)|dx';
+            const rangeTxt = (isFinite(a) && isFinite(b)) ? `[${a.toFixed(2)}, ${b.toFixed(2)}]` : '';
+            const areaValue = Number(value);
+            const valueLabel = isFinite(areaValue) ? areaValue.toFixed(6) : '—';
+            parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">${title} ${rangeTxt}:</strong><br><span style="font-size:14px;color:#495057;font-weight:600;">${valueLabel}</span></div>`);
         }
         
         if (parts.length > 0) {
@@ -838,6 +902,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 plot_bgcolor: '#fafafa',
                 paper_bgcolor: '#fff'
             };
+
+            // Add area between curves trace if available
+            if (currentAreaBetweenTrace) {
+                if (Array.isArray(currentAreaBetweenTrace)) {
+                    traces.push(...currentAreaBetweenTrace);
+                } else {
+                    traces.push(currentAreaBetweenTrace);
+                }
+            }
 
             // If using π axis, generate custom tick values and labels
             if (usePiAxis) {
@@ -1235,12 +1308,14 @@ document.addEventListener('DOMContentLoaded', () => {
         currentIntegralAnnotations = null;
         currentPolarIntegralTraces = null;
         currentParametricHighlightTrace = null;
+        currentAreaBetweenTrace = null; // Clear area between trace
         // Clear all analysis data
         currentAnalysisData.zeros = [];
         currentAnalysisData.extrema = [];
         currentAnalysisData.intersections = [];
         currentAnalysisData.integral = null;
         currentAnalysisData.derivative = '';
+        currentAnalysisData.areaBetween = null; // Clear area between data
         // Hide analysis results panel
         if (analysisResults) {
             analysisResults.style.display = 'none';
@@ -1433,6 +1508,153 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Calculate area between curves (cartesian only)
+    if (calculateBetweenButton && calcWorker) {
+        calculateBetweenButton.addEventListener('click', () => {
+            const modeEl = document.getElementById('plotMode');
+            const mode = (modeEl && modeEl.value) || 'cartesian';
+            if (mode !== 'cartesian') {
+                errorDisplay.textContent = 'Pole między krzywymi dostępne tylko w trybie kartezjańskim.';
+                return;
+            }
+
+            const expr1 = (functionInput && functionInput.value) ? functionInput.value.trim() : '';
+            const expr2 = (function2Input && function2Input.value) ? function2Input.value.trim() : '';
+            if (!expr1 || !expr2) {
+                errorDisplay.textContent = 'Wprowadź obie funkcje f₁(x) i f₂(x).';
+                return;
+            }
+
+            if (!betweenA || !betweenB) {
+                errorDisplay.textContent = 'Brak pól granic przedziału.';
+                return;
+            }
+
+            const a = parseNumberInput(betweenA.value);
+            const b = parseNumberInput(betweenB.value);
+            if (!isFinite(a) || !isFinite(b) || a >= b) {
+                errorDisplay.textContent = 'Nieprawidłowe granice całkowania (a < b).';
+                return;
+            }
+
+            errorDisplay.textContent = 'Obliczanie pola...';
+            currentAreaBetweenTrace = null;
+            currentAnalysisData.areaBetween = null;
+
+            const areaListener = (ev) => {
+                const msg = ev.data;
+                if (!msg) return;
+
+                if (msg.type === 'areaBetweenResult') {
+                    calcWorker.removeEventListener('message', areaListener);
+                    const payload = msg.payload || {};
+                    const xs = payload.xSamples || [];
+                    const y1 = payload.y1Samples || [];
+                    const y2 = payload.y2Samples || [];
+
+                    if (!Array.isArray(xs) || !Array.isArray(y1) || !Array.isArray(y2) || xs.length !== y1.length || xs.length !== y2.length) {
+                        errorDisplay.textContent = 'Nie udało się przygotować danych do wizualizacji pola.';
+                        return;
+                    }
+
+                    const areaTraces = [];
+                    let segmentX = [];
+                    let segmentTop = [];
+                    let segmentBottom = [];
+                    let legendUsed = false;
+
+                    const flushSegment = () => {
+                        if (segmentX.length < 2) {
+                            segmentX = [];
+                            segmentTop = [];
+                            segmentBottom = [];
+                            return;
+                        }
+
+                        const baseTrace = {
+                            x: [...segmentX],
+                            mode: 'lines',
+                            line: { color: 'rgba(0,0,0,0)' },
+                            hoverinfo: 'skip',
+                            connectgaps: false,
+                            showlegend: false
+                        };
+
+                        areaTraces.push({
+                            ...baseTrace,
+                            y: [...segmentBottom]
+                        });
+
+                        areaTraces.push({
+                            ...baseTrace,
+                            y: [...segmentTop],
+                            fill: 'tonexty',
+                            fillcolor: 'rgba(0, 100, 255, 0.2)',
+                            name: 'Pole między krzywymi',
+                            showlegend: !legendUsed
+                        });
+
+                        legendUsed = true;
+                        segmentX = [];
+                        segmentTop = [];
+                        segmentBottom = [];
+                    };
+
+                    for (let i = 0; i < xs.length; i++) {
+                        const xVal = xs[i];
+                        const y1Val = y1[i];
+                        const y2Val = y2[i];
+
+                        if (!isFinite(xVal) || !isFinite(y1Val) || !isFinite(y2Val)) {
+                            flushSegment();
+                            continue;
+                        }
+
+                        segmentX.push(xVal);
+                        const top = Math.max(y1Val, y2Val);
+                        const bottom = Math.min(y1Val, y2Val);
+                        segmentTop.push(top);
+                        segmentBottom.push(bottom);
+                    }
+
+                    flushSegment();
+
+                    if (areaTraces.length === 0) {
+                        errorDisplay.textContent = 'Brak danych do zacieniowania pola.';
+                        return;
+                    }
+
+                    const areaValue = Number(payload.value);
+                    currentAreaBetweenTrace = areaTraces;
+                    currentAnalysisData.areaBetween = {
+                        value: areaValue,
+                        a: Number(payload.a),
+                        b: Number(payload.b)
+                    };
+
+                    errorDisplay.textContent = '';
+                    displayAnalysisResults();
+                    plotButton.click();
+                } else if (msg.type === 'error' && msg.payload && msg.payload.message && msg.payload.message.includes('pola między krzywymi')) {
+                    calcWorker.removeEventListener('message', areaListener);
+                    errorDisplay.textContent = msg.payload.message;
+                }
+            };
+
+            calcWorker.addEventListener('message', areaListener);
+            calcWorker.postMessage({
+                type: 'computeAreaBetween',
+                payload: {
+                    expression1: expr1,
+                    expression2: expr2,
+                    a,
+                    b,
+                    scope: collectScope()
+                }
+            });
+        });
+    }
     
     // Calculate integral button handler - supports all modes
     if (calculateIntegralButton && calcWorker) {
@@ -1454,8 +1676,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentIntegralShapes = null;
                 currentIntegralAnnotations = null;
             }
-            // Reset polar/parametric traces if switching modes
-            if (mode !== 'polar') {
+            // Reset polar traces when leaving polar mode
+            if (mode === 'polar') {
                 currentPolarIntegralTraces = null;
             }
             if (mode !== 'parametric') {
@@ -1464,13 +1686,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             errorDisplay.textContent = 'Obliczanie całki...';
 
-            // Use a temporary worker for integral to isolate responses
-            const integralWorker = new Worker('calculator-worker.js');
-
             const integralListener = (ev) => {
                 const msg = ev.data;
                 if (!msg) return;
 
+                if (betweenCurvesControls) {
+                    betweenCurvesControls.style.display = 'none';
+                }
                 if (msg.type === 'integralResult') {
                     const payload = msg.payload || {};
                     // Preserve display bounds for parametric/polar when angle mode = degrees
@@ -1510,16 +1732,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     displayAnalysisResults();
                     errorDisplay.textContent = '';
-                    integralWorker.removeEventListener('message', integralListener);
-                    try { integralWorker.terminate(); } catch (_) {}
+                    calcWorker.removeEventListener('message', integralListener);
                 } else if (msg.type === 'error') {
                     errorDisplay.textContent = msg.payload.message;
-                    integralWorker.removeEventListener('message', integralListener);
-                    try { integralWorker.terminate(); } catch (_) {}
+                    calcWorker.removeEventListener('message', integralListener);
                 }
             };
 
-            integralWorker.addEventListener('message', integralListener);
+            calcWorker.addEventListener('message', integralListener);
 
             // Build payload per mode
             if (mode === 'cartesian') {
@@ -1570,6 +1790,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const xMax3D = parseNumberInput(document.getElementById('xMax3D').value);
                 const yMin3D = parseNumberInput(document.getElementById('yMin3D').value);
                 const yMax3D = parseNumberInput(document.getElementById('yMax3D').value);
+                const resolution3D = parseNumberInput(document.getElementById('resolution3D').value);
+
                 if (!surfaceInput || !surfaceInput.value.trim()) {
                     errorDisplay.textContent = 'Wprowadź funkcję z(x,y)';
                     calcWorker.removeEventListener('message', integralListener);
@@ -1577,6 +1799,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (!isFinite(xMin3D) || !isFinite(xMax3D) || xMin3D >= xMax3D || !isFinite(yMin3D) || !isFinite(yMax3D) || yMin3D >= yMax3D) {
                     errorDisplay.textContent = 'Niepoprawny zakres X/Y dla 3D';
+                    calcWorker.removeEventListener('message', integralListener);
+                    return;
+                }
+                if (!isFinite(resolution3D) || resolution3D < 10 || resolution3D > 200) {
+                    errorDisplay.textContent = 'Rozdzielczość musi być między 10 a 200';
                     calcWorker.removeEventListener('message', integralListener);
                     return;
                 }
@@ -1591,7 +1818,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create shaded area for integral visualization (clearer boundaries, pos/neg areas, band and labels)
     function createIntegralShading(expression, a, b) {
         try {
-            const node = math.parse(expression);
             const compiled = node.compile();
             const scope = collectScope();
 
@@ -2361,14 +2587,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Delegate heavy computation to worker (if available)
             const plotDiv = myChartCanvas; // myChartCanvas jest elementem DOM (zamieniliśmy canvas na div)
             if (calcWorker) {
-                // Always use a fresh worker for compute to avoid late responses from older tasks
-                try { calcWorker.terminate(); } catch (_) {}
-                try { calcWorker = new Worker('calculator-worker.js'); } catch (e) {
-                    console.warn('Nie udało się utworzyć Web Workera:', e);
-                    calcWorker = null;
-                }
-            }
-            if (calcWorker) {
                 // show temporary status
                 errorDisplay.textContent = 'Obliczanie...';
                 const function2Input = document.getElementById('function2Input');
@@ -2414,11 +2632,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!surfaceInput || !surfaceInput.value.trim()) {
                         throw new Error('Wprowadź funkcję z(x,y)');
                     }
-                    if (!isFinite(xMin3D) || !isFinite(xMax3D) || xMin3D >= xMax3D) {
+                    if (!isFinite(xMin3D) || !isFinite(xMax3D) || xMin3D >= xMax3D || !isFinite(yMin3D) || !isFinite(yMax3D) || yMin3D >= yMax3D) {
                         throw new Error('Niepoprawne wartości X min/max dla wykresu 3D');
-                    }
-                    if (!isFinite(yMin3D) || !isFinite(yMax3D) || yMin3D >= yMax3D) {
-                        throw new Error('Niepoprawne wartości Y min/max dla wykresu 3D');
                     }
                     if (!isFinite(resolution3D) || resolution3D < 10 || resolution3D > 200) {
                         throw new Error('Rozdzielczość musi być między 10 a 200');
