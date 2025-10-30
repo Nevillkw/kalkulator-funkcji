@@ -227,6 +227,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearDataButton = document.getElementById('clearDataButton');
     const historyList = document.getElementById('historyList');
     const clearHistoryButton = document.getElementById('clearHistoryButton');
+    const insightsToggle = document.getElementById('insightsToggle');
+    const chartContainer = document.getElementById('chartContainer');
+
+    // 1) Zapamiętywanie stanu rozwinięcia panelu (details)
+    try {
+        const savedOpen = localStorage.getItem('insightsOpen');
+        if (insightsToggle && (savedOpen === '0' || savedOpen === '1')) {
+            insightsToggle.open = savedOpen === '1';
+        }
+        if (insightsToggle) {
+            insightsToggle.addEventListener('toggle', () => {
+                try { localStorage.setItem('insightsOpen', insightsToggle.open ? '1' : '0'); } catch (_) {}
+            });
+        }
+    } catch (_) {}
+
+    // (usunięto belkę do zmiany wysokości — brak dodatkowej logiki)
+
+    // 3) Pełny ekran dla wykresu
+    (function setupFullscreen(){
+        if (!chartContainer) return;
+        const plotDiv = document.getElementById('myChart');
+
+        const toggle = () => {
+            if (document.fullscreenElement === chartContainer) {
+                if (document.exitFullscreen) document.exitFullscreen();
+            } else {
+                if (chartContainer.requestFullscreen) chartContainer.requestFullscreen();
+            }
+        };
+
+        // Skrót klawiaturowy: F (poza polami edycji)
+        document.addEventListener('keydown', (e) => {
+            const t = e.target;
+            const isEditable = t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName));
+            if (!isEditable && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); toggle(); }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            try { if (window.Plotly && plotDiv) Plotly.Plots.resize(plotDiv); } catch(_) {}
+        });
+    })();
 
     // Śledź ostatnio aktywne pole wprowadzania
     let lastActiveInput = null;
@@ -1035,7 +1077,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 layout.annotations = (layout.annotations || []).concat(currentIntegralAnnotations);
             }
 
-            const config = { responsive: true, scrollZoom: true, modeBarButtonsToRemove: ['select2d','lasso2d','zoom2d'] };
+            // Custom fullscreen modebar button (integrates with Plotly UI)
+            const fsIcon = { width: 512, height: 512, path: 'M0,96 L0,0 96,0 96,32 32,32 32,96 Z M416,0 512,0 512,96 480,96 480,32 416,32 Z M0,416 32,416 32,480 96,480 96,512 0,512 Z M480,416 512,416 512,512 416,512 416,480 480,480 Z' };
+            const fsButton = {
+                name: 'fullscreen',
+                title: 'Pełny ekran (F)',
+                icon: fsIcon,
+                click: () => {
+                    try {
+                        if (document.fullscreenElement === chartContainer) {
+                            if (document.exitFullscreen) document.exitFullscreen();
+                        } else if (chartContainer && chartContainer.requestFullscreen) {
+                            chartContainer.requestFullscreen();
+                        }
+                        setTimeout(() => { try { Plotly.Plots.resize(plotDiv); } catch(_) {} }, 100);
+                    } catch (_) {}
+                }
+            };
+
+            const config = {
+                responsive: true,
+                scrollZoom: true,
+                modeBarButtonsToRemove: ['select2d','lasso2d','zoom2d'],
+                modeBarButtonsToAdd: [fsButton]
+            };
 
             Plotly.newPlot(plotDiv, traces, layout, config).then(gd => {
                 myChart = gd;

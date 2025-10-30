@@ -11,6 +11,8 @@
 :root {
     /* Main content width for header fieldsets (Tryb, Funkcje, Renderowanie, button) */
     --header-content-width: 860px;
+    /* Default height of the insights row (results + history) */
+    --insights-height: 28vh;
 }
 
 .calculator-header h2 {
@@ -368,7 +370,7 @@ input::placeholder {
     gap: 10px;
     align-items: stretch;
     /* Fixed row height so both panels are equal and scroll internally */
-    height: 28vh;
+    height: var(--insights-height);
     min-height: 180px;
     max-height: 380px;
     /* Do not let the whole row become scrollable – each panel scrolls inside */
@@ -381,9 +383,11 @@ input::placeholder {
     flex: 1 1 0;
     min-height: 0;
     max-height: 100%;
-    overflow-y: scroll; /* always show vertical scrollbar when space is constrained */
+    overflow-y: auto; /* show scrollbar only when needed */
     overflow-x: hidden;
 }
+
+/* (usunięto belkę do zmiany wysokości) */
 
 .param-controls {
     min-height: 15px;
@@ -464,6 +468,22 @@ input::placeholder {
 
 #myChart:active {
     cursor: grabbing;
+}
+
+/* Chart container and fullscreen support */
+.chart-container { position: relative; }
+
+/* When in fullscreen, make the chart fill the viewport */
+#chartContainer:fullscreen #myChart,
+#chartContainer:-webkit-full-screen #myChart {
+    height: 100vh !important;
+    width: 100vw !important;
+    border-radius: 0;
+    border: none;
+}
+#chartContainer:fullscreen,
+#chartContainer:-webkit-full-screen {
+    background: #fff;
 }
 
 .range-inputs {
