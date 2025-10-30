@@ -205,18 +205,23 @@
                     <details class="ui-group sidebar-group collapsible" open>
                         <summary>🔍 Analiza</summary>
                         <div class="group-content">
+                            <button id="clearAnalysisButton" style="width:100%;margin-bottom:10px;font-size:12px;padding:7px;background:linear-gradient(135deg,#ff6b6b 0%,#ee5a6f 100%);color:white;" title="Wyczyść wszystkie analizy, całki i zacieniowania">🗑️ Wyczyść analizy</button>
+                            
                             <div class="analysis-options">
                                 <label style="display:block;margin-bottom:6px;">
-                                    <input type="checkbox" id="zerosCheckbox">&nbsp;Miejsca zerowe
+                                    <input type="checkbox" id="zerosCheckbox">&nbsp;🎯 Miejsca zerowe
                                 </label>
                                 <label style="display:block;margin-bottom:6px;">
-                                    <input type="checkbox" id="extremaCheckbox">&nbsp;Ekstrema
+                                    <input type="checkbox" id="extremaCheckbox">&nbsp;⛰️ Ekstrema
+                                </label>
+                                <label style="display:block;margin-bottom:6px;">
+                                    <input type="checkbox" id="inflectionsCheckbox">&nbsp;🔄 Punkty przegięcia
                                 </label>
                                 <label style="display:block;margin-bottom:8px;">
-                                    <input type="checkbox" id="intersectionsCheckbox">&nbsp;Punkty przecięcia
+                                    <input type="checkbox" id="intersectionsCheckbox">&nbsp;✖️ Punkty przecięcia
                                 </label>
                                 <label style="display:block;margin-bottom:8px;">
-                                    <input type="checkbox" id="derivativePlotCheckbox">&nbsp;<span id="derivativeLabelText">Rysuj/licz pochodną</span>
+                                    <input type="checkbox" id="derivativePlotCheckbox">&nbsp;📈 <span id="derivativeLabelText">Rysuj/licz pochodną</span>
                                 </label>
                             </div>
                             
@@ -224,11 +229,11 @@
                                 <label style="display:block;margin-bottom:6px;font-weight:500;font-size:12px;"><span id="integralLabelText">Całka oznaczona:</span></label>
                                 <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
                                     <label for="integralA" style="font-size:12px;">a:</label>
-                                    <input type="text" id="integralA" value="0" style="width:80px;padding:4px;font-size:12px;" placeholder="np. 0 lub pi/2">
+                                    <input type="text" id="integralA" value="0" style="width:80px;padding:4px;font-size:12px;" placeholder="np. 0 lub pi/2" title="Lewa granica całkowania">
                                     <label for="integralB" style="font-size:12px;">b:</label>
-                                    <input type="text" id="integralB" value="1" style="width:80px;padding:4px;font-size:12px;" placeholder="np. pi">
+                                    <input type="text" id="integralB" value="1" style="width:80px;padding:4px;font-size:12px;" placeholder="np. pi" title="Prawa granica całkowania">
                                 </div>
-                                <button id="calculateIntegralButton" style="width:100%;font-size:12px;padding:6px;">Oblicz i zacieniuj</button>
+                                <button id="calculateIntegralButton" style="width:100%;font-size:12px;padding:6px;" title="Automatycznie oblicza się po zmianie granic">📊 Oblicz i zacieniuj</button>
                                 <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;">
                                     <input type="checkbox" id="showIntegralLabel"> Pokaż wartość całki na wykresie
                                 </label>
@@ -239,11 +244,11 @@
                                 <label style="display:block;margin-bottom:6px;font-weight:500;font-size:12px;">Pole między krzywymi:</label>
                                 <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
                                     <label for="betweenA" style="font-size:12px;">a:</label>
-                                    <input type="text" id="betweenA" value="0" style="width:80px;padding:4px;font-size:12px;" placeholder="np. -1">
+                                    <input type="text" id="betweenA" value="0" style="width:80px;padding:4px;font-size:12px;" placeholder="np. -1" title="Lewa granica przedziału">
                                     <label for="betweenB" style="font-size:12px;">b:</label>
-                                    <input type="text" id="betweenB" value="1" style="width:80px;padding:4px;font-size:12px;" placeholder="np. 1">
+                                    <input type="text" id="betweenB" value="1" style="width:80px;padding:4px;font-size:12px;" placeholder="np. 1" title="Prawa granica przedziału">
                                 </div>
-                                <button id="calculateBetweenButton" style="width:100%;font-size:12px;padding:6px;">Oblicz i zacieniuj</button>
+                                <button id="calculateBetweenButton" style="width:100%;font-size:12px;padding:6px;" title="Automatycznie oblicza się po zmianie granic">📐 Oblicz i zacieniuj</button>
                             </div>
                         </div>
                     </details>
@@ -278,6 +283,12 @@
         <div id="analysisResults" class="analysis-results" style="display:none;">
             <h4>📋 Wyniki analizy:</h4>
             <div id="analysisResultsContent"></div>
+        </div>
+
+        <!-- Loading indicator -->
+        <div class="loading-indicator" id="loadingIndicator">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Obliczanie...</div>
         </div>
 
         <details class="help-section">

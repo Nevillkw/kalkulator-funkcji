@@ -328,6 +328,68 @@ function findIntersections(compiled1, compiled2, xMin, xMax, yMin, yMax, segment
 	return results;
 }
 
+// Detect inflection points by finding sign changes of the second derivative (numeric)
+function detectInflectionPoints(compiled, xMin, xMax, scope = {}, options = {}) {
+	const N = options.N || 800;
+	if (!isFinite(xMin) || !isFinite(xMax) || xMin >= xMax) return [];
+	const h = (xMax - xMin) / N;
+	const xs = new Array(N + 1);
+	const ys = new Array(N + 1);
+	for (let i = 0; i <= N; i++) {
+		const x = xMin + i * h;
+		xs[i] = x;
+		ys[i] = safeEval(compiled, x, scope);
+		if (!isFinite(ys[i])) ys[i] = NaN;
+	}
+	// Second derivative via central differences (uniform grid)
+	const f2 = new Array(N + 1).fill(NaN);
+	for (let i = 1; i < N; i++) {
+		const y0 = ys[i - 1], y1 = ys[i], y2 = ys[i + 1];
+		if (isFinite(y0) && isFinite(y1) && isFinite(y2)) {
+			f2[i] = (y2 - 2 * y1 + y0) / (h * h);
+		}
+	}
+	const EPS2 = options.eps2 || 1e-4; // tolerance for second derivative near zero
+	const minSpacing = options.minSpacing || ((xMax - xMin) / 200);
+	const results = [];
+	let lastX = -Infinity;
+	for (let i = 1; i < N - 1; i++) {
+		const a = f2[i];
+		const b = f2[i + 1];
+		if (!isFinite(a) || !isFinite(b)) continue;
+		// Look for sign change across [i, i+1]
+		if (a === 0 && Math.sign(b) !== 0) {
+			// exact zero at i
+			const x0 = xs[i];
+			if (x0 - lastX >= minSpacing) {
+				const y0 = safeEval(compiled, x0, scope);
+				if (isFinite(y0)) { results.push({ x: x0, y: y0 }); lastX = x0; }
+			}
+		} else if (b === 0 && Math.sign(a) !== 0) {
+			const x0 = xs[i + 1];
+			if (x0 - lastX >= minSpacing) {
+				const y0 = safeEval(compiled, x0, scope);
+				if (isFinite(y0)) { results.push({ x: x0, y: y0 }); lastX = x0; }
+			}
+		} else if (a * b < 0 || (Math.abs(a) < EPS2 && Math.abs(b) > EPS2) || (Math.abs(b) < EPS2 && Math.abs(a) > EPS2)) {
+			// Linear interpolation root of f2 between xs[i] and xs[i+1]
+			const t = a / (a - b);
+			if (t >= 0 && t <= 1) {
+				const x0 = xs[i] + t * h;
+				if (!isFinite(x0)) continue;
+				if (x0 - lastX < minSpacing) continue;
+				const y0 = safeEval(compiled, x0, scope);
+				if (isFinite(y0)) {
+					results.push({ x: x0, y: y0 });
+					lastX = x0;
+					if (results.length > 200) break; // safety cap
+				}
+			}
+		}
+	}
+	return results;
+}
+
 // Message handler
 self.onmessage = function (ev) {
 	const msg = ev.data;
@@ -536,7 +598,7 @@ self.onmessage = function (ev) {
 	}
 
 	if (msg.type !== 'compute') return;
-	const { expression, expression2, xMin, xMax, yMin, yMax, initialPoints, options, calculateZeros, calculateExtrema, calculateIntersections, mode } = msg.payload;
+	const { expression, expression2, xMin, xMax, yMin, yMax, initialPoints, options, calculateZeros, calculateExtrema, calculateIntersections, calculateInflections, mode } = msg.payload;
 	const opts = Object.assign({ absLimit: 1e5, maxDepth: 16, minStep: Math.abs((xMax - xMin) || 1)/500000, absEps: 1e-3, relEps: 1e-2 }, options || {});
 
 	try {
@@ -614,7 +676,6 @@ self.onmessage = function (ev) {
 				const derivNode = math.derivative(expression, 'x');
 				try { derivString = derivNode.toString(); } catch (e) { derivString = ''; }
 				const compiledDeriv = derivNode.compile();
-				
 				// Compute derivative samples for plotting
 				derivativeSamples = generateSamples(compiledDeriv, xMin, xMax, initialPoints || 50, opts, scope);
 			} catch (e) {
@@ -622,7 +683,17 @@ self.onmessage = function (ev) {
 				derivString = '';
 				derivativeSamples = null;
 			}
-		}			self.postMessage({ type: 'result', payload: { mode: 'cartesian', samples1, samples2, intersections, zeros, extrema, derivative: derivString, derivativeSamples } });
+		}
+
+		// Inflection points on demand
+		let inflections = [];
+		if (calculateInflections) {
+			try {
+				inflections = detectInflectionPoints(compiled1, xMin, xMax, scope, { N: 800, eps2: 1e-4, minSpacing: Math.abs(xMax - xMin) / 200 });
+			} catch (_) { inflections = []; }
+		}
+
+		self.postMessage({ type: 'result', payload: { mode: 'cartesian', samples1, samples2, intersections, zeros, extrema, inflections, derivative: derivString, derivativeSamples } });
 			return;
 		}
 

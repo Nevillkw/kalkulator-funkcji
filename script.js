@@ -1,7 +1,7 @@
 // Global variables for data traces
 let loadedDataTrace = null; // Trace dla importowanych danych 2D (CSV/API)
 let loadedData3DTrace = null; // Trace dla importowanych danych 3D (CSV/API)
-let currentAnalysisData = { zeros: [], extrema: [], intersections: [], integral: null, derivative: '', areaBetween: null }; // Initialize early for 3D access
+let currentAnalysisData = { zeros: [], extrema: [], inflections: [], intersections: [], integral: null, derivative: '', areaBetween: null }; // Initialize early for 3D access
 
 // Funkcja do renderowania wykresu 3D
 function handle3DPlot(data) {
@@ -175,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const yMinInput = document.getElementById('yMin');
     const yMaxInput = document.getElementById('yMax');
     const resetViewButton = document.getElementById('resetView');
+    const clearAnalysisButton = document.getElementById('clearAnalysisButton');
     const modeHelper = document.getElementById('modeHelper');
     const plotMode = document.getElementById('plotMode');
     const samplingPreset = document.getElementById('samplingPreset');
@@ -197,14 +198,14 @@ document.addEventListener('DOMContentLoaded', () => {
             betweenCurvesControls.style.paddingTop = '8px';
             betweenCurvesControls.style.marginTop = '8px';
             betweenCurvesControls.innerHTML = `
-                <label style="display:block;margin-bottom:6px;font-weight:500;font-size:12px;">Pole między krzywymi:</label>
+                <label style="display:block;margin-bottom:6px;font-weight:500;font-size:12px;">📐 Pole między krzywymi:</label>
                 <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
                     <label for="betweenA" style="font-size:12px;">a:</label>
-                    <input type="text" id="betweenA" value="0" style="width:80px;padding:4px;font-size:12px;" placeholder="np. -1">
+                    <input type="text" id="betweenA" value="0" style="width:80px;padding:4px;font-size:12px;" placeholder="np. -1" title="Lewa granica przedziału">
                     <label for="betweenB" style="font-size:12px;">b:</label>
-                    <input type="text" id="betweenB" value="1" style="width:80px;padding:4px;font-size:12px;" placeholder="np. 1">
+                    <input type="text" id="betweenB" value="1" style="width:80px;padding:4px;font-size:12px;" placeholder="np. 1" title="Prawa granica przedziału">
                 </div>
-                <button id="calculateBetweenButton" style="width:100%;font-size:12px;padding:6px;">Oblicz i zacieniuj</button>
+                <button id="calculateBetweenButton" style="width:100%;font-size:12px;padding:6px;" title="Automatycznie oblicza się po zmianie granic">📐 Oblicz i zacieniuj</button>
             `;
             groupContent.appendChild(betweenCurvesControls);
 
@@ -360,6 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const zerosCheckbox = document.getElementById('zerosCheckbox');
     const extremaCheckbox = document.getElementById('extremaCheckbox');
     const intersectionsCheckbox = document.getElementById('intersectionsCheckbox');
+    const inflectionsCheckbox = document.getElementById('inflectionsCheckbox');
     const derivativePlotCheckbox = document.getElementById('derivativePlotCheckbox');
     const integralControls = document.querySelector('.integral-controls');
     const betweenCurvesControls = document.querySelector('.between-curves-controls');
@@ -368,6 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'block';
             if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'block';
             if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'block';
+            if (inflectionsCheckbox) inflectionsCheckbox.parentElement.style.display = 'block';
             if (derivativePlotCheckbox) {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz pochodną f'(x)");
@@ -383,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
             if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
             if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
+            if (inflectionsCheckbox) inflectionsCheckbox.parentElement.style.display = 'none';
             if (derivativePlotCheckbox) {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz dx/dt, dy/dt");
@@ -398,6 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
             if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
             if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
+            if (inflectionsCheckbox) inflectionsCheckbox.parentElement.style.display = 'none';
             if (derivativePlotCheckbox) {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz dr/dθ");
@@ -413,6 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
             if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
             if (intersectionsCheckbox) intersectionsCheckbox.parentElement.style.display = 'none';
+            if (inflectionsCheckbox) inflectionsCheckbox.parentElement.style.display = 'none';
             if (derivativePlotCheckbox) derivativePlotCheckbox.parentElement.style.display = 'none';
             if (integralControls) integralControls.style.display = 'none';
             if (betweenCurvesControls) betweenCurvesControls.style.display = 'none';
@@ -528,7 +534,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Calculator worker - handles heavy computations
     let calcWorker = null;
     try {
-        calcWorker = new Worker('calculator-worker.js');
+        // Cache-bust worker to avoid stale code in browsers
+        calcWorker = new Worker('calculator-worker.js?v=20251030');
     } catch (e) {
         console.warn('Nie udało się utworzyć Web Workera:', e);
         calcWorker = null;
@@ -555,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayAnalysisResults() {
         if (!analysisResults || !analysisResultsContent) return;
         
-        const { zeros, extrema, integral, intersections, derivative } = currentAnalysisData;
+    const { zeros, extrema, inflections, integral, intersections, derivative } = currentAnalysisData;
         const parts = [];
         
         // Display derivative formulas based on mode
@@ -589,43 +596,55 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (zeros && zeros.length > 0) {
             const zerosList = zeros.map(p => `x = ${p.x.toFixed(4)}`).join(', ');
-            parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Miejsca zerowe:</strong><br><span style="font-size:13px;color:#495057;">${zerosList}</span></div>`);
+            parts.push(`<div style="margin-bottom:12px;line-height:1.8;"><strong style="font-size:14px;color:#1976d2;">🎯 Miejsca zerowe:</strong><br><span style="font-size:13px;color:#37474f;">${zerosList}</span></div>`);
         }
         
         if (extrema && extrema.length > 0) {
             const extremaList = extrema.map(p => {
-                const tag = p.type === 'min' ? 'min' : (p.type === 'max' ? 'max' : 'siodłowy/nieokreślone');
-                return `(${p.x.toFixed(4)}, ${p.y.toFixed(4)}) ${p.type ? '(' + tag + ')' : ''}`;
-            }).join(', ');
-            parts.push(`<div style=\"margin-bottom:10px;line-height:1.6;\"><strong style=\"font-size:14px;color:#2c3e50;\">Ekstrema:</strong><br><span style=\"font-size:13px;color:#495057;\">${extremaList}</span></div>`);
+                const tag = p.type === 'min' ? 'min' : (p.type === 'max' ? 'max' : 'siodłowy');
+                const emoji = p.type === 'min' ? '📉' : (p.type === 'max' ? '📈' : '〰️');
+                return `${emoji} (${p.x.toFixed(4)}, ${p.y.toFixed(4)}) <em>${tag}</em>`;
+            }).join('<br>');
+            parts.push(`<div style="margin-bottom:12px;line-height:1.8;"><strong style="font-size:14px;color:#1976d2;">⛰️ Ekstrema:</strong><br><span style="font-size:13px;color:#37474f;">${extremaList}</span></div>`);
+        }
+
+        // Inflection points
+        if (inflections && inflections.length > 0) {
+            const inflList = inflections.map(p => `(${p.x.toFixed(4)}, ${p.y.toFixed(4)})`).join(', ');
+            parts.push(`<div style="margin-bottom:12px;line-height:1.8;"><strong style="font-size:14px;color:#6a1b9a;">🔄 Punkty przegięcia:</strong><br><span style="font-size:13px;color:#4527a0;">${inflList}</span></div>`);
         }
         
         if (intersections && intersections.length > 0) {
             const intersectionsList = intersections.map(p => `(${p.x.toFixed(4)}, ${p.y.toFixed(4)})`).join(', ');
-            parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">Punkty przecięcia:</strong><br><span style="font-size:13px;color:#495057;">${intersectionsList}</span></div>`);
+            parts.push(`<div style="margin-bottom:12px;line-height:1.8;"><strong style="font-size:14px;color:#1976d2;">✖️ Punkty przecięcia:</strong><br><span style="font-size:13px;color:#37474f;">${intersectionsList}</span></div>`);
         }
         
         if (integral !== null && integral !== undefined) {
             const mode = integral.mode || 'cartesian';
             let title = 'Całka oznaczona';
+            let emoji = '∫';
             let rangeTxt = '';
             if (mode === 'cartesian') {
                 title = 'Całka ∫ f(x) dx';
+                emoji = '📊';
                 if (isFinite(integral.a) && isFinite(integral.b)) rangeTxt = `[${integral.a.toFixed(2)}, ${integral.b.toFixed(2)}]`;
             } else if (mode === 'parametric') {
                 title = 'Całka krzywoliniowa ∫ y dx';
+                emoji = '〰️';
                 if (isFinite(integral.a) && isFinite(integral.b)) rangeTxt = `t∈[${integral.a.toFixed(2)}, ${integral.b.toFixed(2)}]`;
             } else if (mode === 'polar') {
                 title = 'Pole w biegunowych ½∫ r(θ)² dθ';
+                emoji = '🎯';
                 if (isFinite(integral.a) && isFinite(integral.b)) rangeTxt = `θ∈[${integral.a.toFixed(2)}, ${integral.b.toFixed(2)}]`;
             } else if (mode === '3d') {
                 title = 'Podwójna całka ∬ z(x,y) dA';
+                emoji = '📦';
                 if (integral.xRange && integral.yRange) {
                     rangeTxt = `x∈[${integral.xRange.min.toFixed(2)}, ${integral.xRange.max.toFixed(2)}], y∈[${integral.yRange.min.toFixed(2)}, ${integral.yRange.max.toFixed(2)}]`;
                 }
             }
             const rangeLabel = rangeTxt ? ` ${rangeTxt}` : '';
-            parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">${title}${rangeLabel}:</strong><br><span style="font-size:14px;color:#495057;font-weight:600;">${Number(integral.value).toFixed(6)}</span></div>`);
+            parts.push(`<div style="margin-bottom:12px;line-height:1.8;background:linear-gradient(135deg,#e3f2fd 0%,#bbdefb 100%);padding:10px;border-radius:8px;border-left:4px solid #1976d2;"><strong style="font-size:15px;color:#1565c0;">${emoji} ${title}${rangeLabel}:</strong><br><span style="font-size:16px;color:#0d47a1;font-weight:700;">${Number(integral.value).toFixed(6)}</span></div>`);
         }
         
         // Display area between curves result
@@ -635,7 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const rangeTxt = (isFinite(a) && isFinite(b)) ? `[${a.toFixed(2)}, ${b.toFixed(2)}]` : '';
             const areaValue = Number(value);
             const valueLabel = isFinite(areaValue) ? areaValue.toFixed(6) : '—';
-            parts.push(`<div style="margin-bottom:10px;line-height:1.6;"><strong style="font-size:14px;color:#2c3e50;">${title} ${rangeTxt}:</strong><br><span style="font-size:14px;color:#495057;font-weight:600;">${valueLabel}</span></div>`);
+            parts.push(`<div style="margin-bottom:12px;line-height:1.8;background:linear-gradient(135deg,#fff3e0 0%,#ffe0b2 100%);padding:10px;border-radius:8px;border-left:4px solid #f57c00;"><strong style="font-size:15px;color:#e65100;">📐 ${title} ${rangeTxt}:</strong><br><span style="font-size:16px;color:#bf360c;font-weight:700;">${valueLabel}</span></div>`);
         }
         
         if (parts.length > 0) {
@@ -723,6 +742,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     hovertemplate: 'Ekstremum (%{x:.4f}, %{y:.4f})<br>%{text}<extra></extra>'
                 });
             }
+            // Inflection points markers
+            if (resultPayload.inflections && resultPayload.inflections.length > 0) {
+                traces.push({
+                    x: resultPayload.inflections.map(p => p.x),
+                    y: resultPayload.inflections.map(p => p.y),
+                    mode: 'markers',
+                    name: 'Punkty przegięcia',
+                    marker: { size: 12, color: 'purple', symbol: 'triangle-up', line: { width: 2, color: '#4a148c' } },
+                    hovertemplate: 'Przegięcie (%{x:.4f}, %{y:.4f})<extra></extra>'
+                });
+            }
             
             // Add shaded integral area if exists (cartesian)
             if (!resultPayload.polar && currentIntegralTrace) {
@@ -807,6 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAnalysisData.zeros = resultPayload.zeros || [];
             currentAnalysisData.extrema = resultPayload.extrema || [];
             currentAnalysisData.intersections = resultPayload.intersections || [];
+            currentAnalysisData.inflections = resultPayload.inflections || [];
             currentAnalysisData.derivative = resultPayload.derivative || '';
             displayAnalysisResults();
 
@@ -1020,9 +1051,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (panUpBtn) panUpBtn.onclick = () => { const { yr } = getRanges(); const shift = (yr[1] - yr[0]) * PAN_FACTOR; Plotly.relayout(plotDiv, { 'yaxis.range': [yr[0] + shift, yr[1] + shift] }); };
                 if (panDownBtn) panDownBtn.onclick = () => { const { yr } = getRanges(); const shift = (yr[1] - yr[0]) * PAN_FACTOR; Plotly.relayout(plotDiv, { 'yaxis.range': [yr[0] - shift, yr[1] - shift] }); };
             });
+            
+            // Hide loading when done
+            hideLoading();
         } catch (err) {
             console.error('Render error:', err);
             errorDisplay.textContent = `Błąd podczas renderowania: ${err.message}`;
+            hideLoading();
         }
     }
 
@@ -1312,7 +1347,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear all analysis data
         currentAnalysisData.zeros = [];
         currentAnalysisData.extrema = [];
-        currentAnalysisData.intersections = [];
+    currentAnalysisData.intersections = [];
+    currentAnalysisData.inflections = [];
         currentAnalysisData.integral = null;
         currentAnalysisData.derivative = '';
         currentAnalysisData.areaBetween = null; // Clear area between data
@@ -1412,6 +1448,47 @@ document.addEventListener('DOMContentLoaded', () => {
         plotButton.click();
     });
 
+    // Obsługa przycisku czyszczenia analiz
+    if (clearAnalysisButton) {
+        clearAnalysisButton.addEventListener('click', () => {
+            // Clear all analysis data
+            clearAllAnalysisData();
+            
+            // Clear preview indicators
+            const integralPreview = document.querySelector('.integral-controls .integral-preview');
+            const betweenPreview = document.querySelector('.between-curves-controls .integral-preview');
+            if (integralPreview) integralPreview.style.display = 'none';
+            if (betweenPreview) betweenPreview.style.display = 'none';
+            
+            // Uncheck all analysis checkboxes
+            const zerosCheck = document.getElementById('zerosCheckbox');
+            const extremaCheck = document.getElementById('extremaCheckbox');
+            const intersectionsCheck = document.getElementById('intersectionsCheckbox');
+            const derivativeCheck = document.getElementById('derivativePlotCheckbox');
+            const inflectionsCheck = document.getElementById('inflectionsCheckbox');
+            const integralLabelCheck = document.getElementById('showIntegralLabel');
+            
+            if (zerosCheck) zerosCheck.checked = false;
+            if (extremaCheck) extremaCheck.checked = false;
+            if (intersectionsCheck) intersectionsCheck.checked = false;
+            if (derivativeCheck) derivativeCheck.checked = false;
+            if (inflectionsCheck) inflectionsCheck.checked = false;
+            if (integralLabelCheck) integralLabelCheck.checked = false;
+            
+            // Reset integral bounds to defaults
+            if (integralA) integralA.value = '0';
+            if (integralB) integralB.value = '1';
+            if (betweenA) betweenA.value = '0';
+            if (betweenB) betweenB.value = '1';
+            
+            // Clear error display
+            errorDisplay.textContent = '';
+            
+            // Redraw plot with just the functions (no analysis)
+            plotButton.click();
+        });
+    }
+
     // Zmiana presetu automatycznie odświeża wykres
     if (samplingPreset) {
         samplingPreset.addEventListener('change', () => {
@@ -1445,6 +1522,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const extremaCheckbox = document.getElementById('extremaCheckbox');
     if (extremaCheckbox) {
         extremaCheckbox.addEventListener('change', () => {
+            plotButton.click();
+        });
+    }
+    const inflectionsCheckbox2 = document.getElementById('inflectionsCheckbox');
+    if (inflectionsCheckbox2) {
+        inflectionsCheckbox2.addEventListener('change', () => {
             plotButton.click();
         });
     }
@@ -1656,6 +1739,88 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Auto-calculate timer for live preview
+    let integralAutoCalcTimer = null;
+    let betweenAutoCalcTimer = null;
+
+    // Function to show integral range preview
+    function showIntegralPreview(a, b) {
+        const integralControls = document.querySelector('.integral-controls');
+        if (!integralControls) return;
+        
+        let preview = integralControls.querySelector('.integral-preview');
+        if (!preview) {
+            preview = document.createElement('div');
+            preview.className = 'integral-preview';
+            integralControls.appendChild(preview);
+        }
+        
+        if (isFinite(a) && isFinite(b) && a < b) {
+            preview.textContent = `📊 Zakres: [${a.toFixed(3)}, ${b.toFixed(3)}] — szerokość: ${(b - a).toFixed(3)}`;
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    // Function to show area between preview
+    function showAreaBetweenPreview(a, b) {
+        const betweenControls = document.querySelector('.between-curves-controls');
+        if (!betweenControls) return;
+        
+        let preview = betweenControls.querySelector('.integral-preview');
+        if (!preview) {
+            preview = document.createElement('div');
+            preview.className = 'integral-preview';
+            betweenControls.appendChild(preview);
+        }
+        
+        if (isFinite(a) && isFinite(b) && a < b) {
+            preview.textContent = `📐 Zakres: [${a.toFixed(3)}, ${b.toFixed(3)}] — szerokość: ${(b - a).toFixed(3)}`;
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    // Auto-calculate for integral inputs
+    if (integralA && integralB) {
+        [integralA, integralB].forEach(input => {
+            input.addEventListener('input', () => {
+                const a = parseNumberInput(integralA.value);
+                const b = parseNumberInput(integralB.value);
+                showIntegralPreview(a, b);
+                
+                // Auto-calculate after 800ms of no typing
+                clearTimeout(integralAutoCalcTimer);
+                integralAutoCalcTimer = setTimeout(() => {
+                    if (isFinite(a) && isFinite(b) && a < b && calculateIntegralButton) {
+                        calculateIntegralButton.click();
+                    }
+                }, 800);
+            });
+        });
+    }
+
+    // Auto-calculate for area between inputs
+    if (betweenA && betweenB) {
+        [betweenA, betweenB].forEach(input => {
+            input.addEventListener('input', () => {
+                const a = parseNumberInput(betweenA.value);
+                const b = parseNumberInput(betweenB.value);
+                showAreaBetweenPreview(a, b);
+                
+                // Auto-calculate after 800ms of no typing
+                clearTimeout(betweenAutoCalcTimer);
+                betweenAutoCalcTimer = setTimeout(() => {
+                    if (isFinite(a) && isFinite(b) && a < b && calculateBetweenButton) {
+                        calculateBetweenButton.click();
+                    }
+                }, 800);
+            });
+        });
+    }
+
     // Calculate integral button handler - supports all modes
     if (calculateIntegralButton && calcWorker) {
         calculateIntegralButton.addEventListener('click', () => {
@@ -1690,9 +1855,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const msg = ev.data;
                 if (!msg) return;
 
-                if (betweenCurvesControls) {
-                    betweenCurvesControls.style.display = 'none';
-                }
                 if (msg.type === 'integralResult') {
                     const payload = msg.payload || {};
                     // Preserve display bounds for parametric/polar when angle mode = degrees
@@ -1710,7 +1872,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     currentAnalysisData.integral = Object.assign({ mode }, payload);
 
-                    // Visualization per mode
+                    // Show results immediately
+                    displayAnalysisResults();
+                    errorDisplay.textContent = '';
+
+                    // Visualization per mode (after displaying results)
                     if (mode === 'cartesian') {
                         const expression = functionInput.value;
                         createIntegralShading(expression, a, b);
@@ -1730,8 +1896,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         plotButton.click();
                     }
 
-                    displayAnalysisResults();
-                    errorDisplay.textContent = '';
                     calcWorker.removeEventListener('message', integralListener);
                 } else if (msg.type === 'error') {
                     errorDisplay.textContent = msg.payload.message;
@@ -1818,6 +1982,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create shaded area for integral visualization (clearer boundaries, pos/neg areas, band and labels)
     function createIntegralShading(expression, a, b) {
         try {
+            const node = math.parse(expression);
             const compiled = node.compile();
             const scope = collectScope();
 
@@ -2560,10 +2725,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // we already have function renderFromComputation declared above; update it in-place by
     // relying on resultPayload flags inside the existing function. (No replacement needed here.)
 
+    // Loading indicator helper
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    function showLoading(text = 'Obliczanie...') {
+        if (loadingIndicator) {
+            const textEl = loadingIndicator.querySelector('.loading-text');
+            if (textEl) textEl.textContent = text;
+            loadingIndicator.classList.add('active');
+        }
+    }
+    function hideLoading() {
+        if (loadingIndicator) {
+            loadingIndicator.classList.remove('active');
+        }
+    }
+
     // Obsługa kliknięcia przycisku "Rysuj"
     plotButton.addEventListener('click', () => {
     const mode = (plotModeSelect && plotModeSelect.value) || 'cartesian';
     errorDisplay.textContent = '';
+    showLoading('Generowanie wykresu...');
         try {
             // Stałe dla rysowania wykresu
             const JUMP_THRESHOLD = 10;
@@ -2595,6 +2776,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const extremaChecked = (document.getElementById('extremaCheckbox') || {}).checked;
                 const intersectionsChecked = (document.getElementById('intersectionsCheckbox') || {}).checked;
                 const derivativePlotChecked = (document.getElementById('derivativePlotCheckbox') || {}).checked;
+                const inflectionsChecked = (document.getElementById('inflectionsCheckbox') || {}).checked;
                 // Build payload depending on mode
                 const basePayload = {
                     xMin, xMax, yMin, yMax,
@@ -2604,7 +2786,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     calculateExtrema: Boolean(extremaChecked),
                     calculateIntersections: Boolean(intersectionsChecked),
                     scope: collectScope(),
-                    calculateDerivativePlot: Boolean(derivativePlotChecked)
+                    calculateDerivativePlot: Boolean(derivativePlotChecked),
+                    calculateInflections: Boolean(inflectionsChecked)
                 };
 
                 let payload = Object.assign({}, basePayload);
@@ -2671,6 +2854,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             errorDisplay.textContent = '';
                         }
                         calcWorker.removeEventListener('message', onMessage);
+                        hideLoading();
                     }
                 };
                 
@@ -2763,6 +2947,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Obsługa błędów: pokaż komunikat i wyczyść wykres
             console.error(err);
             errorDisplay.textContent = `Błąd: ${err.message}`;
+            hideLoading();
             try {
                 if (myChart && typeof Plotly !== 'undefined') {
                     Plotly.purge(myChartCanvas);
