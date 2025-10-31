@@ -816,6 +816,14 @@ button:active {
 .theme-deflatul #chartContainer:-webkit-full-screen .fs-dock { border-color:#9db8da; }
 .theme-deflatul .fs-dock-header { background: linear-gradient(135deg,#d8e6f7 0%, #c6daef 100%); border-bottom-color:#9db8da; }
 .theme-deflatul .fs-dock .fs-actions button { background: linear-gradient(135deg,#e7f0ff 0%, #d7e7fb 100%); border-color:#9db8da; color:#1f3d6d; }
+/* deflatul: insights and scrollbars */
+.theme-deflatul .insights > summary { border-color:#c7d2e3; background: linear-gradient(135deg,#f8fbff 0%, #eef3f8 100%); color:#2b3b55; }
+.theme-deflatul .analysis-results #analysisResultsContent::-webkit-scrollbar-thumb,
+.theme-deflatul .fs-analysis-content::-webkit-scrollbar-thumb,
+.theme-deflatul .fs-history-list::-webkit-scrollbar-thumb { background:#b7c6d8; }
+.theme-deflatul .analysis-results #analysisResultsContent::-webkit-scrollbar-thumb:hover,
+.theme-deflatul .fs-analysis-content::-webkit-scrollbar-thumb:hover,
+.theme-deflatul .fs-history-list::-webkit-scrollbar-thumb:hover { background:#a4b6cb; }
 
 details {
     background: #f8f9fa;

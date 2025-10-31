@@ -10,6 +10,14 @@ const MAX_HISTORY_ITEMS = 20;
 // Funkcja do renderowania wykresu 3D
 function handle3DPlot(data) {
     console.log('Otrzymane dane 3D:', data);
+    // Apply theme colors for 3D plots
+    let t3 = { paper:'#ffffff', plot:'#ffffff', grid:'#d0d0d0', font:'#263238' };
+    try {
+        const tn = (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) || 'default';
+        if (tn === 'deflatul') {
+            t3 = { paper:'#eef3f8', plot:'#eef3f8', grid:'#cfd8e3', font:'#2b3b55' };
+        }
+    } catch(_) {}
     
     // Store derivative info if present and non-empty
     if (data.derivative && typeof currentAnalysisData !== 'undefined') {
@@ -73,26 +81,30 @@ function handle3DPlot(data) {
         scene: {
             xaxis: { 
                 title: { text: 'X', font: { size: 14, weight: 600 } },
-                gridcolor: '#d0d0d0',
+                gridcolor: t3.grid,
                 gridwidth: 2
             },
             yaxis: { 
                 title: { text: 'Y', font: { size: 14, weight: 600 } },
-                gridcolor: '#d0d0d0',
+                gridcolor: t3.grid,
                 gridwidth: 2
             },
             zaxis: { 
                 title: { text: 'Z', font: { size: 14, weight: 600 } },
-                gridcolor: '#d0d0d0',
+                gridcolor: t3.grid,
                 gridwidth: 2
             },
             camera: {
                 eye: { x: 1.5, y: 1.5, z: 1.5 }
             },
-            aspectmode: 'cube'
+            aspectmode: 'cube',
+            bgcolor: t3.plot
         },
         autosize: true,
-        margin: { l: 0, r: 0, b: 0, t: 50 }
+        margin: { l: 0, r: 0, b: 0, t: 50 },
+        paper_bgcolor: t3.paper,
+        plot_bgcolor: t3.plot,
+        font: { color: t3.font }
     };
 
     console.log('Konfiguracja wykresu:', { traces, layout });
@@ -297,13 +309,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const THEMES = {
         default: {
             paper: '#ffffff', plot: '#ffffff', grid: '#e9ecef',
-            axis: '#607d8b', tick: '#546e7a', zeroline: '#9e9e9e', font: '#263238'
+            axis: '#607d8b', tick: '#546e7a', zeroline: '#9e9e9e', font: '#263238',
+            legendBg: 'rgba(255,255,255,0.95)',
+            legendBorder: '#cccccc',
+            shadePos: 'rgba(76, 175, 80, 0.28)',
+            shadeNeg: 'rgba(244, 67, 54, 0.25)',
+            shadeBetween: 'rgba(100, 150, 255, 0.10)',
+            shadeBetweenLine: 'rgba(100, 150, 255, 0.9)',
+            lines: {
+                primary: 'rgb(75,192,192)',
+                secondary: 'rgb(255,99,132)',
+                derivative1: 'rgb(123, 31, 162)',
+                derivative2: 'rgb(156, 39, 176)'
+            },
+            markers: {
+                zeros: { color: '#1565c0', line: '#0d47a1' },
+                extrema: { color: '#fb8c00', line: '#ef6c00' },
+                intersections: { color: '#e53935', line: '#b71c1c' },
+                inflections: { color: '#8e24aa', line: '#4a148c' }
+            }
         },
         deflatul: {
-            paper: '#eef3f8', plot: '#eef3f8', grid: '#cfd8e3',
-            axis: '#5a6f8a', tick: '#3b4b63', zeroline: '#9db0c7', font: '#2b3b55'
+            paper: '#eef3f8', plot: '#eef3f8', grid: '#d7e0ea',
+            axis: '#6a7f97', tick: '#3b4b63', zeroline: '#a9bdd3', font: '#2b3b55',
+            legendBg: 'rgba(238,243,248,0.92)',
+            legendBorder: '#9db8da',
+            shadePos: 'rgba(90, 160, 255, 0.22)',
+            shadeNeg: 'rgba(255, 120, 120, 0.20)',
+            shadeBetween: 'rgba(120, 170, 255, 0.12)',
+            shadeBetweenLine: 'rgba(90,130,210,0.9)',
+            lines: {
+                primary: '#3e7bd9',
+                secondary: '#ff7d99',
+                derivative1: '#6a4fb3',
+                derivative2: '#8a6bd1'
+            },
+            markers: {
+                zeros: { color: '#2b6cb0', line: '#1e4e8c' },
+                extrema: { color: '#e39b35', line: '#c47d1a' },
+                intersections: { color: '#d25b6d', line: '#9b3240' },
+                inflections: { color: '#6a4fb3', line: '#4a3a8c' }
+            }
         }
     };
+    function getActiveThemeName(){ try { return localStorage.getItem('theme') || 'default'; } catch(_) { return 'default'; } }
+    function getActiveTheme(){ const name = getActiveThemeName(); return THEMES[name] || THEMES.default; }
     function applyTheme(themeName){
         const theme = THEMES[themeName] || THEMES.default;
         const root = document.body || document.documentElement;
@@ -322,7 +372,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     'yaxis.tickfont.color': theme.tick,
                     'xaxis.zerolinecolor': theme.zeroline,
                     'yaxis.zerolinecolor': theme.zeroline,
-                    'font.color': theme.font
+                    'font.color': theme.font,
+                    'legend.bgcolor': theme.legendBg,
+                    'legend.bordercolor': theme.legendBorder
                 };
                 Plotly.relayout(myChart, relayout);
             }
@@ -469,17 +521,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 relayout['yaxis.zerolinecolor'] = '#607d8b';
                 relayout['font.color'] = '#eceff1';
             } else {
-                relayout['paper_bgcolor'] = '#ffffff';
-                relayout['plot_bgcolor'] = '#ffffff';
-                relayout['xaxis.gridcolor'] = '#e9ecef';
-                relayout['yaxis.gridcolor'] = '#e9ecef';
-                relayout['xaxis.linecolor'] = '#607d8b';
-                relayout['yaxis.linecolor'] = '#607d8b';
-                relayout['xaxis.tickfont.color'] = '#546e7a';
-                relayout['yaxis.tickfont.color'] = '#546e7a';
-                relayout['xaxis.zerolinecolor'] = '#9e9e9e';
-                relayout['yaxis.zerolinecolor'] = '#9e9e9e';
-                relayout['font.color'] = '#263238';
+                const t = getActiveTheme();
+                relayout['paper_bgcolor'] = t.paper;
+                relayout['plot_bgcolor'] = t.plot;
+                relayout['xaxis.gridcolor'] = t.grid;
+                relayout['yaxis.gridcolor'] = t.grid;
+                relayout['xaxis.linecolor'] = t.axis;
+                relayout['yaxis.linecolor'] = t.axis;
+                relayout['xaxis.tickfont.color'] = t.tick;
+                relayout['yaxis.tickfont.color'] = t.tick;
+                relayout['xaxis.zerolinecolor'] = t.zeroline;
+                relayout['yaxis.zerolinecolor'] = t.zeroline;
+                relayout['font.color'] = t.font;
             }
         }
 
@@ -1564,6 +1617,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const traces = [];
+            // theme palette for traces/markers
+            const t = getActiveTheme();
             const samples1 = resultPayload.samples1 || { x: [], y: [] };
             // If the worker returned a polar result, render using scatterpolar
             if (resultPayload.polar) {
@@ -1573,7 +1628,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     mode: 'lines',
                     type: 'scatterpolar',
                     name: `r(t) = ${resultPayload.rExpr || ''}`,
-                    line: { color: 'rgb(75,192,192)', width: 3 }
+                    line: { color: (t.lines && t.lines.primary) || 'rgb(75,192,192)', width: 3 }
                 });
             } else {
                 traces.push({
@@ -1581,7 +1636,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     y: samples1.y,
                     mode: 'lines',
                     name: (resultPayload.mode === 'parametric') ? `parametric` : `f₁(x) = ${expression}`,
-                    line: { color: 'rgb(75,192,192)', width: 3 },
+                    line: { color: (t.lines && t.lines.primary) || 'rgb(75,192,192)', width: 3 },
                     connectgaps: false
                 });
             }
@@ -1593,7 +1648,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     y: samples2.y,
                     mode: 'lines',
                     name: `f₂(x) = ${expression2}`,
-                    line: { color: 'rgb(255,99,132)', width: 3 },
+                    line: { color: (t.lines && t.lines.secondary) || 'rgb(255,99,132)', width: 3 },
                     connectgaps: false
                 });
             }
@@ -1604,7 +1659,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     y: resultPayload.intersections.map(p => p.y),
                     mode: 'markers',
                     name: 'Punkty przecięcia',
-                    marker: { size: 12, color: 'red', symbol: 'x', line: { width: 2, color: 'darkred' } }
+                    marker: { size: 12, color: (t.markers?.intersections?.color || 'red'), symbol: 'x', line: { width: 2, color: (t.markers?.intersections?.line || 'darkred') } }
                 });
             }
 
@@ -1615,7 +1670,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     y: resultPayload.zeros.map(p => p.y),
                     mode: 'markers',
                     name: 'Miejsca zerowe',
-                    marker: { size: 10, color: 'blue', symbol: 'circle', line: { width: 2, color: 'darkblue' } }
+                    marker: { size: 10, color: (t.markers?.zeros?.color || 'blue'), symbol: 'circle', line: { width: 2, color: (t.markers?.zeros?.line || 'darkblue') } }
                 });
             }
 
@@ -1627,7 +1682,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     text: resultPayload.extrema.map(p => (p.type === 'min' ? 'min' : (p.type === 'max' ? 'max' : 'siodłowy/nieokreślone'))),
                     mode: 'markers',
                     name: 'Ekstrema',
-                    marker: { size: 11, color: 'orange', symbol: 'diamond', line: { width: 2, color: 'darkorange' } },
+                    marker: { size: 11, color: (t.markers?.extrema?.color || 'orange'), symbol: 'diamond', line: { width: 2, color: (t.markers?.extrema?.line || 'darkorange') } },
                     hovertemplate: 'Ekstremum (%{x:.4f}, %{y:.4f})<br>%{text}<extra></extra>'
                 });
             }
@@ -1638,7 +1693,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     y: resultPayload.inflections.map(p => p.y),
                     mode: 'markers',
                     name: 'Punkty przegięcia',
-                    marker: { size: 12, color: 'purple', symbol: 'triangle-up', line: { width: 2, color: '#4a148c' } },
+                    marker: { size: 12, color: (t.markers?.inflections?.color || 'purple'), symbol: 'triangle-up', line: { width: 2, color: (t.markers?.inflections?.line || '#4a148c') } },
                     hovertemplate: 'Przegięcie (%{x:.4f}, %{y:.4f})<extra></extra>'
                 });
             }
@@ -1675,7 +1730,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         y: resultPayload.derivativeSamples.y,
                         mode: 'lines',
                         name: "f'(x)",
-                        line: { color: 'rgb(123, 31, 162)', width: 2, dash: 'dash' },
+                        line: { color: (t.lines?.derivative1 || 'rgb(123, 31, 162)'), width: 2, dash: 'dash' },
                         connectgaps: false
                     });
                 }
@@ -1687,7 +1742,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         y: resultPayload.derivativeSamplesX.value,
                         mode: 'lines',
                         name: "dx/dt",
-                        line: { color: 'rgb(123, 31, 162)', width: 2, dash: 'dash' },
+                        line: { color: (t.lines?.derivative1 || 'rgb(123, 31, 162)'), width: 2, dash: 'dash' },
                         connectgaps: false,
                         yaxis: 'y2'
                     });
@@ -1698,7 +1753,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         y: resultPayload.derivativeSamplesY.value,
                         mode: 'lines',
                         name: "dy/dt",
-                        line: { color: 'rgb(156, 39, 176)', width: 2, dash: 'dot' },
+                        line: { color: (t.lines?.derivative2 || 'rgb(156, 39, 176)'), width: 2, dash: 'dot' },
                         connectgaps: false,
                         yaxis: 'y2'
                     });
@@ -1712,7 +1767,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         mode: 'lines',
                         type: 'scatterpolar',
                         name: "dr/dθ",
-                        line: { color: 'rgb(123, 31, 162)', width: 2, dash: 'dash' }
+                        line: { color: (t.lines?.derivative1 || 'rgb(123, 31, 162)'), width: 2, dash: 'dash' }
                     });
                 }
             }
@@ -1782,16 +1837,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 return val.toFixed(1);
             }
 
-            // Default cartesian layout
+            // Default cartesian layout (theme-aware)
             let layout = {
                 dragmode: 'pan',
                 xaxis: { 
                     title: { text: usePiAxis ? 'x (rad)' : 'x', font: { size: 16, weight: 600 } }, 
                     range: [xMin, xMax], 
                     type: 'linear',
-                    gridcolor: '#e0e0e0',
+                    gridcolor: t.grid || '#e0e0e0',
                     gridwidth: 1,
-                    tickfont: { size: 13 },
+                    tickfont: { size: 13, color: t.tick },
+                    linecolor: t.axis,
                     tickmode: usePiAxis ? 'linear' : 'auto',
                     tick0: usePiAxis ? 0 : undefined,
                     dtick: usePiAxis ? Math.PI / 2 : undefined,
@@ -1803,9 +1859,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     title: { text: 'f(x)', font: { size: 16, weight: 600 } }, 
                     range: [yMin, yMax], 
                     type: 'linear',
-                    gridcolor: '#e0e0e0',
+                    gridcolor: t.grid || '#e0e0e0',
                     gridwidth: 1,
-                    tickfont: { size: 13 }
+                    tickfont: { size: 13, color: t.tick },
+                    linecolor: t.axis
                 },
                 margin: { t: 40, l: 60, r: 30, b: 50 },
                 showlegend: true,
@@ -1814,13 +1871,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     y: 0.98, 
                     xanchor: 'left', 
                     yanchor: 'top', 
-                    bgcolor: 'rgba(255,255,255,0.95)',
-                    bordercolor: '#ccc',
+                    bgcolor: t.legendBg,
+                    bordercolor: t.legendBorder || '#ccc',
                     borderwidth: 1,
                     font: { size: 13 }
                 },
-                plot_bgcolor: '#fafafa',
-                paper_bgcolor: '#fff'
+                plot_bgcolor: t.plot || '#fafafa',
+                paper_bgcolor: t.paper || '#fff',
+                font: { color: t.font }
             };
 
             // Add area between curves trace if available
@@ -2609,16 +2667,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             showlegend: false
                         };
 
+                        const t = getActiveTheme();
                         areaTraces.push({
                             ...baseTrace,
                             y: [...segmentBottom]
                         });
 
-                        areaTraces.push({
+                            areaTraces.push({
                             ...baseTrace,
                             y: [...segmentTop],
                             fill: 'tonexty',
-                            fillcolor: 'rgba(0, 100, 255, 0.2)',
+                                fillcolor: t.shadeBetween,
                             name: 'Pole między krzywymi',
                             showlegend: !legendUsed
                         });
@@ -2925,6 +2984,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create shaded area for integral visualization (clearer boundaries, pos/neg areas, band and labels)
     function createIntegralShading(expression, a, b) {
         try {
+            const t = getActiveTheme();
             const node = math.parse(expression);
             const compiled = node.compile();
             const scope = collectScope();
@@ -2987,7 +3047,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 type: 'scatter',
                 mode: 'lines',
                 fill: 'tozeroy',
-                fillcolor: 'rgba(76, 175, 80, 0.28)', // greenish for positive area
+                fillcolor: t.shadePos, // theme-dependent
                 line: { width: 0 },
                 name: `∫ f(x) dx [${a.toFixed(2)}, ${b.toFixed(2)}]`,
                 showlegend: true,
@@ -3001,7 +3061,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 type: 'scatter',
                 mode: 'lines',
                 fill: 'tozeroy',
-                fillcolor: 'rgba(244, 67, 54, 0.25)', // reddish for negative area
+                fillcolor: t.shadeNeg, // theme-dependent
                 line: { width: 0 },
                 name: 'Obszar całki (ujemny)',
                 showlegend: false,
@@ -3028,7 +3088,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     type: 'rect',
                     xref: 'x', yref: 'paper',
                     x0: a, x1: b, y0: 0, y1: 1,
-                    fillcolor: 'rgba(100, 150, 255, 0.08)',
+                    fillcolor: t.shadeBetween,
                     line: { width: 0 },
                     layer: 'below'
                 },
@@ -3037,14 +3097,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     type: 'line',
                     xref: 'x', yref: 'paper',
                     x0: a, x1: a, y0: 0, y1: 1,
-                    line: { color: 'rgba(100, 150, 255, 0.9)', width: 2, dash: 'dot' }
+                    line: { color: t.shadeBetweenLine, width: 2, dash: 'dot' }
                 },
                 // right boundary
                 {
                     type: 'line',
                     xref: 'x', yref: 'paper',
                     x0: b, x1: b, y0: 0, y1: 1,
-                    line: { color: 'rgba(100, 150, 255, 0.9)', width: 2, dash: 'dot' }
+                    line: { color: t.shadeBetweenLine, width: 2, dash: 'dot' }
                 }
             ];
 
@@ -3057,7 +3117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showarrow: false,
                     xanchor: 'center', yanchor: 'top',
                     yshift: 12,
-                    font: { size: 12, color: '#2c3e50' }
+                    font: { size: 12, color: t.font }
                 },
                 {
                     x: b, y: 0,
@@ -3066,7 +3126,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showarrow: false,
                     xanchor: 'center', yanchor: 'top',
                     yshift: 12,
-                    font: { size: 12, color: '#2c3e50' }
+                    font: { size: 12, color: t.font }
                 }
             ];
 
@@ -3081,6 +3141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create polar wedge shading for ½ ∫ r(θ)^2 dθ over [a,b]
     function createPolarIntegralShading(rExpr, aRad, bRad) {
         try {
+            const t = getActiveTheme();
             const nodeR = math.parse(rExpr);
             const compiledR = nodeR.compile();
             const scope = collectScope();
@@ -3116,7 +3177,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 r,
                 mode: 'lines',
                 fill: 'toself',
-                fillcolor: 'rgba(100,150,255,0.25)',
+                fillcolor: t.shadeBetween,
                 line: { width: 0 },
                 name: 'Obszar całki (polar)',
                 showlegend: false,
@@ -3134,6 +3195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create parametric segment highlight for t in [a,b]
     function createParametricIntegralHighlight(xExpr, yExpr, aRad, bRad) {
         try {
+            const t = getActiveTheme();
             const nodeX = math.parse(xExpr);
             const nodeY = math.parse(yExpr);
             const compiledX = nodeX.compile();
@@ -3156,7 +3218,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 y: ys,
                 type: 'scatter',
                 mode: 'lines',
-                line: { width: 5, color: 'rgba(100,150,255,0.9)' },
+                line: { width: 5, color: t.shadeBetweenLine },
                 name: 'Odcinek całki',
                 showlegend: false,
                 connectgaps: false
