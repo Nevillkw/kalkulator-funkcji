@@ -3,7 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalkulator Funkcji Matematycznych</title>
+    <title>Interaktywny Kalkulator Funkcji — wykresy 2D/3D, całki i analiza (Plotly, JS)</title>
+    <meta name="description" content="Rysuj wykresy funkcji (2D/3D), licz całki oznaczone, pola i długości krzywych. Tryby: kartezjański, parametryczny, biegunowy. Działa na telefonie, obsługuje π. Kod na GitHub.">
+    <link rel="canonical" href="https://nevillkw.github.io/kalkulator-funkcji/">
+    <meta property="og:title" content="Interaktywny Kalkulator Funkcji — wykresy 2D/3D, całki i analiza">
+    <meta property="og:description" content="Wykresy 2D/3D, całki i pola, obszar między krzywymi, tryby parametryczny i biegunowy. Mobile fullscreen, π w granicach, start 10×10.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://nevillkw.github.io/kalkulator-funkcji/">
+    <meta property="og:image" content="https://nevillkw.github.io/kalkulator-funkcji/favicon.svg">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Interaktywny Kalkulator Funkcji — wykresy 2D/3D, całki i analiza">
+    <meta name="twitter:description" content="Wykresy 2D/3D, całki i pola, obszar między krzywymi, tryby parametryczny i biegunowy. Mobile fullscreen, π w granicach.">
+    <meta name="theme-color" content="#0b5ed7">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -77,10 +89,10 @@
                     </div>
                 </div>
                 <div class="axes-grid axes-4">
-                    <div><label for="xMin" style="display:block;margin-bottom:4px;">X min:</label><input type="text" id="xMin" value="-10" style="width:100%;" placeholder="np. -2*pi"></div>
-                    <div><label for="xMax" style="display:block;margin-bottom:4px;">X max:</label><input type="text" id="xMax" value="10" style="width:100%;" placeholder="np. 2*pi"></div>
-                    <div><label for="yMin" style="display:block;margin-bottom:4px;">Y min:</label><input type="text" id="yMin" value="-10" style="width:100%;"></div>
-                    <div><label for="yMax" style="display:block;margin-bottom:4px;">Y max:</label><input type="text" id="yMax" value="10" style="width:100%;"></div>
+                    <div><label for="xMin" style="display:block;margin-bottom:4px;">X min:</label><input type="text" id="xMin" value="-5" style="width:100%;" placeholder="np. -2*pi"></div>
+                    <div><label for="xMax" style="display:block;margin-bottom:4px;">X max:</label><input type="text" id="xMax" value="5" style="width:100%;" placeholder="np. 2*pi"></div>
+                    <div><label for="yMin" style="display:block;margin-bottom:4px;">Y min:</label><input type="text" id="yMin" value="-5" style="width:100%;"></div>
+                    <div><label for="yMax" style="display:block;margin-bottom:4px;">Y max:</label><input type="text" id="yMax" value="5" style="width:100%;"></div>
                 </div>
                 </div>
                 <!-- Parametryczne i biegunowe wejścia (poza blokiem kartezjańskim) -->
@@ -119,8 +131,8 @@
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-                        <div><label for="tMinInput" style="display:block;margin-bottom:4px;">t min:</label><input type="number" id="tMinInput" value="-6.28" step="0.1" style="width:100%;"></div>
-                        <div><label for="tMaxInput" style="display:block;margin-bottom:4px;">t max:</label><input type="number" id="tMaxInput" value="6.28" step="0.1" style="width:100%;"></div>
+                        <div><label for="tMinInput" style="display:block;margin-bottom:4px;">t min:</label><input type="text" id="tMinInput" value="-6.28" style="width:100%;" placeholder="np. -2*pi"></div>
+                        <div><label for="tMaxInput" style="display:block;margin-bottom:4px;">t max:</label><input type="text" id="tMaxInput" value="6.28" style="width:100%;" placeholder="np. 2*pi"></div>
                     </div>
                 </div>
 
@@ -142,8 +154,8 @@
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-                        <div><label for="thetaMinInput" style="display:block;margin-bottom:4px;">θ min:</label><input type="number" id="thetaMinInput" value="0" step="0.1" style="width:100%;"></div>
-                        <div><label for="thetaMaxInput" style="display:block;margin-bottom:4px;">θ max:</label><input type="number" id="thetaMaxInput" value="6.28" step="0.1" style="width:100%;"></div>
+                        <div><label for="thetaMinInput" style="display:block;margin-bottom:4px;">θ min:</label><input type="text" id="thetaMinInput" value="0" style="width:100%;" placeholder="np. 0"></div>
+                        <div><label for="thetaMaxInput" style="display:block;margin-bottom:4px;">θ max:</label><input type="text" id="thetaMaxInput" value="6.28" style="width:100%;" placeholder="np. 2*pi"></div>
                     </div>
                 </div>
                 
@@ -272,9 +284,9 @@
                                 <label style="display:block;margin-bottom:6px;font-weight:500;font-size:12px;"><span id="integralLabelText">Całka oznaczona:</span></label>
                                 <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
                                     <label for="integralA" style="font-size:12px;">a:</label>
-                                    <input type="number" id="integralA" value="0" step="0.1" style="width:60px;padding:4px;font-size:12px;">
+                                    <input type="text" id="integralA" value="0" style="width:60px;padding:4px;font-size:12px;" placeholder="np. 0 lub -pi/2">
                                     <label for="integralB" style="font-size:12px;">b:</label>
-                                    <input type="number" id="integralB" value="1" step="0.1" style="width:60px;padding:4px;font-size:12px;">
+                                    <input type="text" id="integralB" value="1" style="width:60px;padding:4px;font-size:12px;" placeholder="np. 1 lub pi">
                                 </div>
                                 <button id="calculateIntegralButton" style="width:100%;font-size:12px;padding:6px;" title="Automatycznie oblicza się po zmianie granic">📊 Oblicz i zacieniuj</button>
                             </div>
@@ -461,6 +473,7 @@
                                     <label><input type="checkbox" id="fsTicks" checked> Opisy osi</label>
                                     <label><input type="checkbox" id="fsEqualAspect"> Równa skala</label>
                                     <label><input type="checkbox" id="fsDark"> Ciemny motyw</label>
+                                    <label><input type="checkbox" id="fsStartMinimizedMobile"> Startuj panel zminimalizowany (telefon)</label>
                                 </div>
                                 <div class="fs-slider">
                                     <span>Grubość linii</span>
@@ -481,6 +494,8 @@
                             
                         </div>
                     </div>
+                    <!-- Mobilny przycisk do chowania/otwierania panelu w fullscreen -->
+                    <button id="fsMobileToggle" class="fs-mobile-toggle" title="Pokaż/ukryj panel">☰</button>
                 </div>
                 <p id="errorDisplay"></p>
                 <!-- Wspólny kontener: jeden przycisk zwija/rozwija wyniki i historię -->
@@ -501,6 +516,7 @@
                             </div>
                         </div>
                     </div>
+                    <div id="insightsResizer" class="insights-resizer" title="Przeciągnij, aby zmienić wysokość"></div>
                 </details>
             </div>
         </div>
@@ -517,20 +533,26 @@
                 <div class="help-column">
                     <h3>Jak korzystać:</h3>
                     <ol>
-                        <li>Wybierz tryb wykresu: kartezjański, parametryczny, biegunowy albo powierzchnia 3D.</li>
-                        <li>Wpisz funkcję w odpowiednie pola (y=f(x), x(t)/y(t), r(t) lub z(x,y)).</li>
-                        <li>We wszystkich polach liczbowych możesz wpisywać π oraz wyrażenia, np. <code>2*pi</code>, <code>pi/3</code>, <code>25*2</code>.</li>
-                        <li>Ustaw zakresy i (opcjonalnie) przełącz jednostki kątów: Radiany/Stopnie.</li>
-                        <li>Kliknij „Rysuj wykres”. Użyj „Auto-fit” do dopasowania widoku lub „Reset widoku”.</li>
-                        <li>W „Analiza” włącz: miejsca zerowe, ekstrema, punkty przecięcia (opcjonalnie).</li>
-                        <li>Całka oznaczona: podaj a,b i kliknij „Oblicz i zacieniuj”. Możesz włączyć etykietę wartości na wykresie.</li>
+                        <li>Wybierz tryb: kartezjański, parametryczny, biegunowy lub 3D.</li>
+                        <li>Uzupełnij pola funkcji: <strong>y=f(x)</strong>, <strong>x(t), y(t)</strong>, <strong>r(t)</strong> lub <strong>z(x,y)</strong>.</li>
+                        <li>W polach liczbowych dozwolone są wyrażenia i π, np. <code>2*pi</code>, <code>pi/3</code>, <code>25*2</code>.</li>
+                        <li>Ustaw zakresy osi. Jednostki kątów możesz przełączyć: <strong>Radiany/Stopnie</strong>.</li>
+                        <li>Kliknij „Rysuj wykres”. Użyj „Auto‑fit” do dopasowania widoku lub „Reset widoku”.</li>
+                        <li>W sekcji „Analiza” włączaj: miejsca zerowe, ekstrema, punkty przegięcia oraz przecięcia.</li>
+                        <li>Całka oznaczona: podaj <strong>a</strong>, <strong>b</strong> i kliknij „Oblicz i zacieniuj”.
+                            W trybie kartezjańskim dostępne jest też <strong>pole między krzywymi</strong>.</li>
+                        <li>Tryb pełnoekranowy: kliknij przycisk fullscreen na pasku wykresu. W fullscreen masz <strong>panel dokowany</strong> z tymi samymi opcjami.
+                            Na telefonie użyj przycisku <strong>☰</strong> (prawy dolny róg), by pokazać/ukryć panel.</li>
+                        <li>Wyniki/Historia: przeciągnij pasek pod panelem, aby zmienić jego wysokość (zapamiętuje się).</li>
                     </ol>
 
                     <h3>Oś i render:</h3>
                     <ul>
-                        <li>Oś X w wielokrotnościach π (dla trybu kartezjańskiego).</li>
-                        <li>Dokładność próbkowania: Szybko / Domyślna / Precyzyjna.</li>
-                        <li>Nawigacja: przyciski +/− oraz strzałki, a także przeciąganie i zoom kółkiem.</li>
+                        <li>Oś X w wielokrotnościach π (kartezjański) — przełącznik w „Renderowanie”.</li>
+                        <li>Dokładność próbkowania: <strong>Szybko / Domyślna / Precyzyjna</strong>.</li>
+                        <li>Wygląd w fullscreen: legenda, siatka, osie 0, opisy osi, równa skala, grubość linii.</li>
+                        <li>Motywy: przełącznik <strong>deflatul</strong> (domyślny dla nowych użytkowników) i szybki tryb ciemny w fullscreen.</li>
+                        <li>Nawigacja: przyciski +/− i strzałki, przeciąganie oraz zoom kółkiem.</li>
                     </ul>
                 </div>
 
@@ -563,36 +585,40 @@
                 <div class="help-column">
                     <h3>Całki i przykłady:</h3>
                     <ul>
-                        <li>Kartezjański: <code>∫ f(x) dx</code> i cieniowanie obszaru (oddzielnie dla części dodatnich/ujemnych).</li>
+                        <li>Kartezjański: <code>∫ f(x) dx</code> — cieniowanie części dodatnich/ujemnych.</li>
                         <li>Parametryczny: <code>∫ y(t) · x'(t) dt</code> — podświetlenie odcinka t∈[a,b].</li>
-                        <li>Biegunowy: <code>½ ∫ r(t)^2 dt</code> — klin (wedge) na wykresie.</li>
+                        <li>Biegunowy: <code>½ ∫ r(t)^2 dt</code> — klin na wykresie.</li>
+                        <li>Między krzywymi: pole na przedziale [a,b] dla f₁ i f₂.</li>
                         <li>3D: <code>∬ z(x,y) dA</code> po prostokącie (wartość w panelu wyników).</li>
                     </ul>
                     <div class="example-grid" style="margin-top:10px;">
-                        <div class="example-item" onclick="insertFunction('x^2')">
-                            <code>x^2</code>
-                            <span>Kartezjański</span>
+                        <div class="example-item" onclick="insertFunction('x^3 - 3*x')">
+                            <code>x^3 - 3x</code>
+                            <span>Kartezjański (ekstrema i zera)</span>
                         </div>
-                        <div class="example-item" onclick="insertFunction('sin(x)')">
-                            <code>sin(x)</code>
-                            <span>Zakres np. -2*pi…2*pi</span>
+                        <div class="example-item" onclick="insertFunction('t')">
+                            <code>x(t)=t, y(t)=t^2</code>
+                            <span>Parametryczny, t: -2…2</span>
                         </div>
-                        <div class="example-item" onclick="insertFunction('cos(t)')">
-                            <code>x(t)=cos(t), y(t)=sin(t)</code>
-                            <span>Parametryczny, t: 0…2*pi</span>
+                        <div class="example-item" onclick="insertFunction('0.2*t')">
+                            <code>r(t)=0.2*t</code>
+                            <span>Biegunowy, θ: 0…~6.283</span>
                         </div>
-                        <div class="example-item" onclick="insertFunction('1+0.5*cos(6*t)')">
-                            <code>r(t)=1+0.5*cos(6*t)</code>
-                            <span>Biegunowy, θ: 0…2*pi</span>
-                        </div>
-                        <div class="example-item" onclick="insertFunction('sin(x)*cos(y)')">
-                            <code>z=sin(x)*cos(y)</code>
-                            <span>3D, x/y: -pi…pi</span>
+                        <div class="example-item" onclick="insertFunction('x^2 + y^2')">
+                            <code>z=x^2 + y^2</code>
+                            <span>3D, paraboloida</span>
                         </div>
                     </div>
                     <ul style="margin-top:10px;">
-                        <li>W polach granic wpisuj: <code>pi/2</code>, <code>3*pi</code>, <code>-pi</code> itd.</li>
-                        <li>Opcja „Pokaż wartość całki na wykresie” dodaje etykietę nad zacieniowanym obszarem/klinami.</li>
+                        <li>W granicach używaj wyrażeń: <code>pi/2</code>, <code>3*pi</code>, <code>-pi</code> itd.</li>
+                        <li>Wynik całki możesz pokazać w panelu wyników; obszar jest wizualizowany na wykresie.</li>
+                    </ul>
+                    <h3 style="margin-top:14px;">Fullscreen i mobile:</h3>
+                    <ul>
+                        <li>Panel fullscreen można przeciągać; nagłówek jest przypięty (sticky).</li>
+                        <li>Na telefonie dostępny jest przycisk <strong>☰</strong> do szybkiego chowania/pokazywania panelu.</li>
+                        <li>Ustawienie „Startuj panel zminimalizowany (telefon)” zapisuje preferencję.</li>
+                        <li>W fullscreen kartezjańskim zakres automatycznie rozszerza się, by pokazać znaczniki analizy.</li>
                     </ul>
                 </div>
             </div>
@@ -602,8 +628,8 @@
 
 
     
-    <!-- Plotly: interactive, modern plotting with built-in pan/zoom (replaces Chart.js) -->
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- Plotly: pin to a specific version for stability -->
+    <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.1/math.js"></script>
     <!-- Initialize Plotly with 3D support -->
     <script>

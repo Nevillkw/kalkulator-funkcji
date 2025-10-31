@@ -316,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fsTicks = document.getElementById('fsTicks');
     const fsEqualAspect = document.getElementById('fsEqualAspect');
     const fsDark = document.getElementById('fsDark');
+    const fsStartMinimizedMobile = document.getElementById('fsStartMinimizedMobile');
     const fsLineWidth = document.getElementById('fsLineWidth');
 
     // 1) Zapamiętywanie stanu rozwinięcia panelu (details)
@@ -332,6 +333,82 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (_) {}
 
     // (usunięto belkę do zmiany wysokości — brak dodatkowej logiki)
+    // Przywrócona regulacja wysokości wyników/historii (resizer) + wyrównanie wysokości sidebaru
+    (function setupInsightsResizerAndSidebarSync(){
+        const resizer = document.getElementById('insightsResizer');
+        const insightsDetails = document.getElementById('insightsToggle');
+        const insightsRow = document.querySelector('.insights-row');
+        const sidebar = document.querySelector('.calculator-sidebar');
+        const chart = document.getElementById('myChart');
+        const root = document.documentElement;
+
+        function applyStoredInsightsHeight(){
+            try {
+                const stored = localStorage.getItem('insightsHeight');
+                if (stored) {
+                    root.style.setProperty('--insights-height', stored);
+                }
+            } catch(_) {}
+        }
+
+        function updateSidebarMaxHeight(){
+            try {
+                // Nie rób nic gdy layout mobilny układa kolumny pionowo
+                const mq = window.matchMedia('(max-width: 768px)');
+                if (mq.matches) { if (sidebar) sidebar.style.maxHeight = ''; return; }
+                if (!sidebar || !chart) return;
+                let total = chart.getBoundingClientRect().height;
+                if (insightsDetails && insightsDetails.open && insightsRow) {
+                    total += insightsRow.getBoundingClientRect().height + 12 /*summary padding approx*/;
+                }
+                // Dodaj niewielki margines bezpieczeństwa
+                total += 8;
+                sidebar.style.maxHeight = Math.max(200, Math.floor(total)) + 'px';
+            } catch(_) {}
+        }
+
+        function startDrag(e){
+            if (!insightsRow) return;
+            const startY = (e.touches ? e.touches[0] : e).clientY;
+            const startH = insightsRow.getBoundingClientRect().height;
+            function onMove(ev){
+                const y = (ev.touches ? ev.touches[0] : ev).clientY;
+                let h = startH + (y - startY);
+                // Granice: min 140px, max 60vh
+                const vh = Math.max(200, Math.floor(window.innerHeight * 0.6));
+                h = Math.max(140, Math.min(h, vh));
+                const val = h + 'px';
+                root.style.setProperty('--insights-height', val);
+                try { localStorage.setItem('insightsHeight', val); } catch(_) {}
+                updateSidebarMaxHeight();
+                ev.preventDefault();
+            }
+            function onUp(){
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onUp);
+            }
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+            document.addEventListener('touchmove', onMove, {passive:false});
+            document.addEventListener('touchend', onUp);
+            e.preventDefault();
+        }
+
+        if (resizer) {
+            resizer.addEventListener('mousedown', startDrag);
+            resizer.addEventListener('touchstart', startDrag, {passive:false});
+        }
+
+        // Aktualizuj po zmianach układu
+        ['load','resize'].forEach(evt => window.addEventListener(evt, () => { applyStoredInsightsHeight(); updateSidebarMaxHeight(); }));
+        if (insightsDetails) {
+            insightsDetails.addEventListener('toggle', () => { applyStoredInsightsHeight(); updateSidebarMaxHeight(); });
+        }
+        // Po zakończonym rysowaniu/relayout też zsynchronizujemy (gdziekoldwiek wywoływane)
+        setTimeout(() => { applyStoredInsightsHeight(); updateSidebarMaxHeight(); }, 0);
+    })();
 
     // 2) Motyw: deflatul (globalny)
     const THEMES = {
@@ -469,13 +546,38 @@ document.addEventListener('DOMContentLoaded', () => {
             // Przywróć pozycję panelu dock
             try { restoreFsDockPosition(); } catch(_) {}
             // Zbuduj i zsynchronizuj pola wejściowe w docku
-            try { if (document.fullscreenElement === chartContainer) { buildFsInputsUI(); syncFsInputsFromMain(); initFsSectionCollapsing(); applyFsDockCollapsed(); } } catch(_) {}
+            try { if (document.fullscreenElement === chartContainer) { buildFsInputsUI(); syncFsInputsFromMain(); initFsSectionCollapsing(); applyFsDockCollapsed(); applyFsDockMinimized(); } } catch(_) {}
             // Zsynchronizuj sekcję całek i zbuduj parametry
             try { if (document.fullscreenElement === chartContainer) { syncFsIntegralFromMain(); syncFsBetweenFromMain(); buildFsParamsUI(); syncFsParamsFromMain(); syncFsRenderFromMain(); syncFsModeFromMain(); updateFsDockModeVisibility(); displayAnalysisResults(); renderHistoryList(); } } catch(_) {}
             // Zastosuj motyw po zmianie fullscreen (kolory Plotly)
             try { const t = (localStorage.getItem('theme') || 'default'); applyTheme(t); } catch(_) {}
             // W fullscreen w kartezjańskim dopasuj osie, aby znaczniki analizy były widoczne
             try { if (myChart) expandRangeToFitMarkers(myChart); } catch(_) {}
+            // Ustaw stan przełącznika "Startuj zminimalizowany" z pamięci
+            try {
+                const cb = document.getElementById('fsStartMinimizedMobile');
+                if (cb) cb.checked = (localStorage.getItem('fsDockStartMinimizedMobile') === '1');
+            } catch(_) {}
+            // Na małych ekranach po wejściu w fullscreen zastosuj preferencję startową
+            try {
+                if (document.fullscreenElement === chartContainer) {
+                    const isSmall = window.innerWidth <= 640;
+                    const startPref = localStorage.getItem('fsDockStartMinimizedMobile');
+                    if (isSmall) {
+                        if (startPref === '1') { localStorage.setItem('fsDockMinimized', '1'); applyFsDockMinimized(); }
+                        else if (startPref === '0') { localStorage.setItem('fsDockMinimized', '0'); applyFsDockMinimized(); }
+                        else {
+                            // brak preferencji: domyślnie zminimalizuj, by nie zasłaniać wykresu
+                            localStorage.setItem('fsDockMinimized', '1');
+                            applyFsDockMinimized();
+                        }
+                    }
+                } else {
+                    // po wyjściu z fullscreen nie trzymaj stanu minimalizacji
+                    localStorage.removeItem('fsDockMinimized');
+                    if (fsDock) fsDock.classList.remove('minimized');
+                }
+            } catch(_) {}
         });
     })();
 
@@ -618,6 +720,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) el.addEventListener('change', applyFsControls);
     });
     if (fsLineWidth) fsLineWidth.addEventListener('input', applyFsControls);
+    if (fsStartMinimizedMobile) {
+        fsStartMinimizedMobile.addEventListener('change', () => {
+            try { localStorage.setItem('fsDockStartMinimizedMobile', fsStartMinimizedMobile.checked ? '1' : '0'); } catch(_) {}
+        });
+    }
 
     // Dopasuj zakresy w fullscreen w trybie kartezjańskim tak, aby punkty analizy (ekstrema, zera, itd.) były w pełni widoczne
     function expandRangeToFitMarkers(gd) {
@@ -686,12 +793,24 @@ document.addEventListener('DOMContentLoaded', () => {
         let dragging = false; let startX=0, startY=0; let baseX=0, baseY=0;
         function onMove(e){ if(!dragging) return; const p = e.touches? e.touches[0]: e; const dx=p.clientX-startX, dy=p.clientY-startY; const rect=chartContainer.getBoundingClientRect(); const dockRect=fsDock.getBoundingClientRect(); let nx = clamp(baseX+dx, 0, rect.width-dockRect.width); let ny = clamp(baseY+dy, 0, rect.height-dockRect.height); fsDock.style.left=nx+'px'; fsDock.style.top=ny+'px'; fsDock.style.bottom='auto'; }
         function onUp(){ if(!dragging) return; dragging=false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp); try{ const rect=fsDock.getBoundingClientRect(); const parent=chartContainer.getBoundingClientRect(); const pos={ x: rect.left-parent.left, y: rect.top-parent.top }; localStorage.setItem('fsDockPos', JSON.stringify(pos)); }catch(_){} }
-        function onDown(e){ const p = e.touches? e.touches[0]: e; const rect=fsDock.getBoundingClientRect(); const parent=chartContainer.getBoundingClientRect(); startX=p.clientX; startY=p.clientY; baseX=rect.left-parent.left; baseY=rect.top-parent.top; dragging=true; document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); document.addEventListener('touchmove', onMove, {passive:false}); document.addEventListener('touchend', onUp); e.preventDefault(); }
+        function onDown(e){
+            // Nie rozpoczynaj przeciągania, jeśli dotknięcie/klik nastąpił na przycisku zwijania lub innym kontrolce
+            const tgt = e.target;
+            if (tgt && (tgt.closest && (tgt.closest('#fsDockToggle') || tgt.closest('button') || tgt.closest('input') || tgt.closest('select') || tgt.closest('textarea')))) {
+                return; // pozwól działać kliknięciu
+            }
+            const p = e.touches? e.touches[0]: e;
+            const rect=fsDock.getBoundingClientRect(); const parent=chartContainer.getBoundingClientRect();
+            startX=p.clientX; startY=p.clientY; baseX=rect.left-parent.left; baseY=rect.top-parent.top; dragging=true;
+            document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+            document.addEventListener('touchmove', onMove, {passive:false}); document.addEventListener('touchend', onUp);
+            e.preventDefault();
+        }
         fsDockHeader.addEventListener('mousedown', onDown);
         fsDockHeader.addEventListener('touchstart', onDown, {passive:false});
     })();
 
-    // === FS Dock collapsing (whole panel & per-section) ===
+    // === FS Dock collapsing (whole panel & per-section) + mobile minimize ===
     function applyFsDockCollapsed(){
         if (!fsDock) return;
         try {
@@ -704,11 +823,31 @@ document.addEventListener('DOMContentLoaded', () => {
         fsDock.classList.toggle('collapsed');
         try { localStorage.setItem('fsDockCollapsed', fsDock.classList.contains('collapsed') ? '1' : '0'); } catch(_) {}
     }
+    // Minimize (hide whole dock) for mobile, controlled by floating button
+    const fsMobileToggle = document.getElementById('fsMobileToggle');
+    function applyFsDockMinimized(){
+        if (!fsDock) return;
+        try {
+            const minimized = localStorage.getItem('fsDockMinimized') === '1';
+            if (minimized) fsDock.classList.add('minimized'); else fsDock.classList.remove('minimized');
+        } catch(_) {}
+    }
+    function toggleFsDockMinimized(){
+        if (!fsDock) return;
+        fsDock.classList.toggle('minimized');
+        try { localStorage.setItem('fsDockMinimized', fsDock.classList.contains('minimized') ? '1' : '0'); } catch(_) {}
+    }
     if (fsDockToggle) {
         fsDockToggle.addEventListener('click', (e) => { e.stopPropagation(); toggleFsDockCollapsed(); });
     }
     if (fsDockHeader) {
         fsDockHeader.addEventListener('dblclick', (e) => { e.preventDefault(); toggleFsDockCollapsed(); });
+    }
+    if (fsMobileToggle) {
+        fsMobileToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleFsDockMinimized();
+        });
     }
 
     function loadFsSectionState(){
@@ -754,7 +893,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     // Initialize immediately if elements are present
-    try { initFsSectionCollapsing(); applyFsDockCollapsed(); } catch(_) {}
+    try { initFsSectionCollapsing(); applyFsDockCollapsed(); applyFsDockMinimized(); } catch(_) {}
 
     // === Fullscreen Dock: Inputs for formulas and ranges ===
     function buildFsInputsUI() {
@@ -1292,10 +1431,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Estetyczny wielomian z zerami i ekstremami: f(x)=x^3-3x
             if (functionInput && isEmpty(functionInput.value)) { functionInput.value = 'x^3 - 3*x'; justDefaulted = true; }
             if (function2Input && isEmpty(function2Input.value)) { function2Input.value = ''; }
-            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-4';
-            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '4';
-            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-6';
-            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '6';
+            // Domyślnie 10x10 pole: -5..5 na obu osiach
+            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-5';
+            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '5';
+            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-5';
+            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '5';
             // Domyślnie nie przełączaj osi X na wielokrotności pi
             const piAxis = document.getElementById('piAxisCheckbox');
             if (piAxis && justDefaulted) piAxis.checked = false;
@@ -1592,11 +1732,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (savedRanges.yMax) yMaxInput.value = roundRange(validateRange(savedRanges.yMax));
     } catch (e) {
         console.warn('Nie udało się wczytać zapisanych zakresów:', e);
-        // Ustaw wartości domyślne
-        xMinInput.value = -10;
-        xMaxInput.value = 10;
-        yMinInput.value = -10;
-        yMaxInput.value = 10;
+    // Ustaw wartości domyślne (10x10 pole: -5..5)
+    xMinInput.value = -5;
+    xMaxInput.value = 5;
+    yMinInput.value = -5;
+    yMaxInput.value = 5;
     }
     let myChart = null; // referencja do wykresu Plotly (graph div)
     let currentIntegralTrace = null; // track shaded integral area (can be a single trace or an array of traces)
@@ -1611,7 +1751,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let calcWorker = null;
     try {
         // Cache-bust worker to avoid stale code in browsers
-        calcWorker = new Worker('calculator-worker.js?v=20251030');
+        calcWorker = new Worker('calculator-worker.js?v=20251031');
     } catch (e) {
         console.warn('Nie udało się utworzyć Web Workera:', e);
         calcWorker = null;
@@ -4302,8 +4442,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (mode === 'parametric') {
                     const xExpr = (xParamInput && xParamInput.value) || '';
                     const yExpr = (yParamInput && yParamInput.value) || '';
-                    const tMin = parseFloat((tMinInput && tMinInput.value) || -6.28);
-                    const tMax = parseFloat((tMaxInput && tMaxInput.value) || 6.28);
+                    const tMin = parseNumberInput((tMinInput && tMinInput.value) || '-6.28');
+                    const tMax = parseNumberInput((tMaxInput && tMaxInput.value) || '6.28');
                     const compiledX = math.parse(xExpr).compile();
                     const compiledY = math.parse(yExpr).compile();
                     const xs = [];
@@ -4322,8 +4462,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 } else if (mode === 'polar') {
                     const rExpr = (rInput && rInput.value) || '';
-                    const tMin = parseFloat((thetaMinInput && thetaMinInput.value) || 0);
-                    const tMax = parseFloat((thetaMaxInput && thetaMaxInput.value) || 6.28);
+                    const tMin = parseNumberInput((thetaMinInput && thetaMinInput.value) || '0');
+                    const tMax = parseNumberInput((thetaMaxInput && thetaMaxInput.value) || '6.28');
                     const compiledR = math.parse(rExpr).compile();
                     const rs = [];
                     const thetas = [];

@@ -1,0 +1,19 @@
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temp
+.tmp/
+.temp/
+~$*
+
+# Node (if used later)
+node_modules/
+.npmrc
+
+# Build outputs (if added later)
+dist/
+build/
