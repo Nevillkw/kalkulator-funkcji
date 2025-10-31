@@ -427,11 +427,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch(_) {}
         try { localStorage.setItem('theme', themeName); } catch(_) {}
     }
-    // Initialize theme from storage and bind toggle
+    // Initialize theme from storage and bind toggle (default to 'deflatul' for first-time users)
     try {
-        const savedTheme = localStorage.getItem('theme') || 'default';
-        if (deflatulToggle) deflatulToggle.checked = (savedTheme === 'deflatul');
-        applyTheme(savedTheme);
+        const savedTheme = localStorage.getItem('theme');
+        const initialTheme = savedTheme || 'deflatul';
+        if (deflatulToggle) deflatulToggle.checked = (initialTheme === 'deflatul');
+        applyTheme(initialTheme);
         if (deflatulToggle) deflatulToggle.addEventListener('change', () => {
             applyTheme(deflatulToggle.checked ? 'deflatul' : 'default');
         });
@@ -473,6 +474,8 @@ document.addEventListener('DOMContentLoaded', () => {
             try { if (document.fullscreenElement === chartContainer) { syncFsIntegralFromMain(); syncFsBetweenFromMain(); buildFsParamsUI(); syncFsParamsFromMain(); syncFsRenderFromMain(); syncFsModeFromMain(); updateFsDockModeVisibility(); displayAnalysisResults(); renderHistoryList(); } } catch(_) {}
             // Zastosuj motyw po zmianie fullscreen (kolory Plotly)
             try { const t = (localStorage.getItem('theme') || 'default'); applyTheme(t); } catch(_) {}
+            // W fullscreen w kartezjańskim dopasuj osie, aby znaczniki analizy były widoczne
+            try { if (myChart) expandRangeToFitMarkers(myChart); } catch(_) {}
         });
     })();
 
@@ -615,6 +618,51 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) el.addEventListener('change', applyFsControls);
     });
     if (fsLineWidth) fsLineWidth.addEventListener('input', applyFsControls);
+
+    // Dopasuj zakresy w fullscreen w trybie kartezjańskim tak, aby punkty analizy (ekstrema, zera, itd.) były w pełni widoczne
+    function expandRangeToFitMarkers(gd) {
+        try {
+            if (!gd || !gd.data || !gd.layout) return;
+            const modeEl = document.getElementById('plotMode');
+            const mode = modeEl ? modeEl.value : 'cartesian';
+            if (mode !== 'cartesian') return;
+            if (document.fullscreenElement !== chartContainer) return;
+            // Zbierz min/max dla x i y na podstawie danych (z wyłączeniem null/NaN)
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            (gd.data || []).forEach(tr => {
+                // Pomijaj ślady niekartezjańskie
+                if (tr.type && tr.type.indexOf('polar') !== -1) return;
+                const xs = tr.x || [];
+                const ys = tr.y || [];
+                for (let i = 0; i < Math.min(xs.length, ys.length); i++) {
+                    const xv = xs[i];
+                    const yv = ys[i];
+                    if (isFinite(xv)) { if (xv < minX) minX = xv; if (xv > maxX) maxX = xv; }
+                    if (isFinite(yv)) { if (yv < minY) minY = yv; if (yv > maxY) maxY = yv; }
+                }
+            });
+            if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) return;
+            // Bieżące zakresy
+            const curX = (gd.layout.xaxis && gd.layout.xaxis.range) ? gd.layout.xaxis.range.slice() : null;
+            const curY = (gd.layout.yaxis && gd.layout.yaxis.range) ? gd.layout.yaxis.range.slice() : null;
+            if (!curX || !curY) return;
+            // Marginesy, aby znaczniki nie były obcięte
+            const padX = Math.max( (maxX - minX) * 0.06, 0.5 );
+            const padY = Math.max( (maxY - minY) * 0.10, 0.5 );
+            const needExpandX = minX - padX < curX[0] || maxX + padX > curX[1];
+            const needExpandY = minY - padY < curY[0] || maxY + padY > curY[1];
+            const upd = {};
+            if (needExpandX) {
+                upd['xaxis.range'] = [ Math.min(curX[0], minX - padX), Math.max(curX[1], maxX + padX) ];
+            }
+            if (needExpandY) {
+                upd['yaxis.range'] = [ Math.min(curY[0], minY - padY), Math.max(curY[1], maxY + padY) ];
+            }
+            if (Object.keys(upd).length) {
+                Plotly.relayout(gd, upd).then(() => { try { updateFsRangeFromLayout(gd.layout); } catch(_) {} });
+            }
+        } catch(_) {}
+    }
 
     // Przenoszenie (drag) panelu fsDock + zapamiętywanie pozycji
     function clamp(val, min, max){ return Math.max(min, Math.min(max, val)); }
@@ -1241,42 +1289,44 @@ document.addEventListener('DOMContentLoaded', () => {
         const isEmpty = (v) => v == null || String(v).trim() === '';
         let justDefaulted = false;
         if (mode === 'cartesian') {
-            if (functionInput && isEmpty(functionInput.value)) { functionInput.value = 'sin(x)'; justDefaulted = true; }
+            // Estetyczny wielomian z zerami i ekstremami: f(x)=x^3-3x
+            if (functionInput && isEmpty(functionInput.value)) { functionInput.value = 'x^3 - 3*x'; justDefaulted = true; }
             if (function2Input && isEmpty(function2Input.value)) { function2Input.value = ''; }
-            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-2*pi';
-            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '2*pi';
-            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-2';
-            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '2';
+            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-4';
+            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '4';
+            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-6';
+            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '6';
+            // Domyślnie nie przełączaj osi X na wielokrotności pi
             const piAxis = document.getElementById('piAxisCheckbox');
-            if (piAxis && justDefaulted) piAxis.checked = true;
+            if (piAxis && justDefaulted) piAxis.checked = false;
         } else if (mode === 'parametric') {
-            if (xParamInput && isEmpty(xParamInput.value)) { xParamInput.value = 'cos(t)'; justDefaulted = true; }
-            if (yParamInput && isEmpty(yParamInput.value)) { yParamInput.value = 'sin(t)'; justDefaulted = true; }
+            // Gładka parabola bez trygonometrii: x=t, y=t^2
+            if (xParamInput && isEmpty(xParamInput.value)) { xParamInput.value = 't'; justDefaulted = true; }
+            if (yParamInput && isEmpty(yParamInput.value)) { yParamInput.value = 't^2'; justDefaulted = true; }
             const tMinEl = document.getElementById('tMinInput');
             const tMaxEl = document.getElementById('tMaxInput');
-            if (tMinEl && isEmpty(tMinEl.value)) tMinEl.value = '0';
-            if (tMaxEl && isEmpty(tMaxEl.value)) tMaxEl.value = '2*pi';
-            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-1.5';
-            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '1.5';
-            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-1.5';
-            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '1.5';
+            if (tMinEl && isEmpty(tMinEl.value)) tMinEl.value = '-2';
+            if (tMaxEl && isEmpty(tMaxEl.value)) tMaxEl.value = '2';
+            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-2.5';
+            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '2.5';
+            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-0.5';
+            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '4.5';
         } else if (mode === 'polar') {
-            if (rInput && isEmpty(rInput.value)) { rInput.value = '1 + 0.5*cos(6*t)'; justDefaulted = true; }
+            // Prosta spirala: r(t) = 0.2*t (bez trygonometrii)
+            if (rInput && isEmpty(rInput.value)) { rInput.value = '0.2*t'; justDefaulted = true; }
             const thMinEl = document.getElementById('thetaMinInput');
             const thMaxEl = document.getElementById('thetaMaxInput');
             if (thMinEl && isEmpty(thMinEl.value)) thMinEl.value = '0';
-            if (thMaxEl && isEmpty(thMaxEl.value)) thMaxEl.value = '2*pi';
-            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-2';
-            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '2';
-            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-2';
-            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '2';
+            if (thMaxEl && isEmpty(thMaxEl.value)) thMaxEl.value = '6.283';
+            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-4';
+            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '4';
+            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-4';
+            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '4';
         } else if (mode === '3d') {
             const s = document.getElementById('surfaceInput');
             if (s) {
-                if (isEmpty(s.value)) {
-                    s.value = 'sin(x)*cos(y)';
-                    justDefaulted = true;
-                }
+                // Przyjemna paraboloida: z = x^2 + y^2 (bez trygonometrii)
+                if (isEmpty(s.value)) { s.value = 'x^2 + y^2'; justDefaulted = true; }
                 s.focus();
                 try { const len = s.value.length; s.setSelectionRange(len, len); } catch(_) {}
             }
@@ -2065,6 +2115,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (document.fullscreenElement === chartContainer) { try { applyFsControls(); } catch(_) {} }
                 // zsynchronizuj i odśwież pola wejściowe w docku
                 if (document.fullscreenElement === chartContainer) { try { buildFsInputsUI(); syncFsInputsFromMain(); syncFsIntegralFromMain(); syncFsBetweenFromMain(); buildFsParamsUI(); syncFsParamsFromMain(); updateFsDockModeVisibility(); } catch(_) {} }
+                // jeśli fullscreen i kart., rozszerz zakresy o markery analizy, by były w pełni widoczne
+                if (document.fullscreenElement === chartContainer) { try { expandRangeToFitMarkers(gd); } catch(_) {} }
 
                 // update inputs/localStorage after pan/zoom
                 plotDiv.on('plotly_relayout', () => {

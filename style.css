@@ -563,6 +563,17 @@ input::placeholder {
 }
 .fs-dock .fs-actions button:hover { background:#e1f0ff; }
 
+/* Fullscreen dock: analysis one-column layout to avoid clipping */
+#chartContainer:fullscreen .fs-dock-section[data-key="analysis"] .fs-grid-2,
+#chartContainer:-webkit-full-screen .fs-dock-section[data-key="analysis"] .fs-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 6px;
+}
+#chartContainer:fullscreen .fs-dock-section[data-key="analysis"] .fs-grid-2 label,
+#chartContainer:-webkit-full-screen .fs-dock-section[data-key="analysis"] .fs-grid-2 label {
+    white-space: normal;
+}
+
 /* Fullscreen dock: navigation grid */
 .fs-nav { display:grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .fs-nav button {
