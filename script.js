@@ -1428,14 +1428,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const isEmpty = (v) => v == null || String(v).trim() === '';
         let justDefaulted = false;
         if (mode === 'cartesian') {
-            // Estetyczny wielomian z zerami i ekstremami: f(x)=x^3-3x
-            if (functionInput && isEmpty(functionInput.value)) { functionInput.value = 'x^3 - 3*x'; justDefaulted = true; }
+            // Funkcja sinusoidalna - dobrze wygląda w szerszym przedziale
+            if (functionInput && isEmpty(functionInput.value)) { functionInput.value = 'sin(x)'; justDefaulted = true; }
             if (function2Input && isEmpty(function2Input.value)) { function2Input.value = ''; }
-            // Domyślnie 10x10 pole: -5..5 na obu osiach
-            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-5';
-            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '5';
-            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-5';
-            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '5';
+            // Domyślnie 20x20 pole: -10..10 na obu osiach dla lepszej widoczności sin(x)
+            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-10';
+            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '10';
+            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-2';
+            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '2';
             // Domyślnie nie przełączaj osi X na wielokrotności pi
             const piAxis = document.getElementById('piAxisCheckbox');
             if (piAxis && justDefaulted) piAxis.checked = false;
@@ -1723,21 +1723,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Przywróć ostatnie zakresy z localStorage
-    try {
-        const savedRanges = JSON.parse(localStorage.getItem('chartRanges')) || {};
-        if (savedRanges.xMin) xMinInput.value = roundRange(validateRange(savedRanges.xMin));
-        if (savedRanges.xMax) xMaxInput.value = roundRange(validateRange(savedRanges.xMax));
-        if (savedRanges.yMin) yMinInput.value = roundRange(validateRange(savedRanges.yMin));
-        if (savedRanges.yMax) yMaxInput.value = roundRange(validateRange(savedRanges.yMax));
-    } catch (e) {
-        console.warn('Nie udało się wczytać zapisanych zakresów:', e);
-    // Ustaw wartości domyślne (10x10 pole: -5..5)
-    xMinInput.value = -5;
-    xMaxInput.value = 5;
-    yMinInput.value = -5;
-    yMaxInput.value = 5;
-    }
+    // Nie przywracamy zakresów z localStorage - zawsze startujemy z czystymi polami
+    // Domyślne wartości będą ustawione przez updateModeUI() w zależności od trybu
     let myChart = null; // referencja do wykresu Plotly (graph div)
     let currentIntegralTrace = null; // track shaded integral area (can be a single trace or an array of traces)
     let currentIntegralShapes = null; // layout shapes for integral (band + boundaries)
@@ -2276,7 +2263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         xMaxInput.value = newRanges.xMax;
                         yMinInput.value = newRanges.yMin;
                         yMaxInput.value = newRanges.yMax;
-                        localStorage.setItem('chartRanges', JSON.stringify(newRanges));
+                        // Nie zapisujemy zakresów do localStorage - zawsze startujemy z domyślnymi
                         // Jeśli fullscreen, zaktualizuj pola zakresu w docku
                         try { syncFsInputsFromMain(); } catch(_) {}
                     } catch (e) { console.warn('Błąd podczas aktualizacji zakresów:', e); }
