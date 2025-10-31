@@ -11,11 +11,14 @@ const MAX_HISTORY_ITEMS = 20;
 function handle3DPlot(data) {
     console.log('Otrzymane dane 3D:', data);
     // Apply theme colors for 3D plots
-    let t3 = { paper:'#ffffff', plot:'#ffffff', grid:'#d0d0d0', font:'#263238' };
+    let t3 = { 
+        paper:'#ffffff', plot:'#ffffff', grid:'#d0d0d0', font:'#263238',
+        axis:'#607d8b', tick:'#546e7a', zeroline:'#9e9e9e'
+    };
     try {
         const tn = (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) || 'default';
         if (tn === 'deflatul') {
-            t3 = { paper:'#eef3f8', plot:'#eef3f8', grid:'#cfd8e3', font:'#2b3b55' };
+            t3 = { paper:'#eef3f8', plot:'#eef3f8', grid:'#cfd8e3', font:'#2b3b55', axis:'#6a7f97', tick:'#3b4b63', zeroline:'#a9bdd3' };
         }
     } catch(_) {}
     
@@ -82,17 +85,26 @@ function handle3DPlot(data) {
             xaxis: { 
                 title: { text: 'X', font: { size: 14, weight: 600 } },
                 gridcolor: t3.grid,
-                gridwidth: 2
+                gridwidth: 2,
+                linecolor: t3.axis,
+                tickfont: { color: t3.tick },
+                zerolinecolor: t3.zeroline
             },
             yaxis: { 
                 title: { text: 'Y', font: { size: 14, weight: 600 } },
                 gridcolor: t3.grid,
-                gridwidth: 2
+                gridwidth: 2,
+                linecolor: t3.axis,
+                tickfont: { color: t3.tick },
+                zerolinecolor: t3.zeroline
             },
             zaxis: { 
                 title: { text: 'Z', font: { size: 14, weight: 600 } },
                 gridcolor: t3.grid,
-                gridwidth: 2
+                gridwidth: 2,
+                linecolor: t3.axis,
+                tickfont: { color: t3.tick },
+                zerolinecolor: t3.zeroline
             },
             camera: {
                 eye: { x: 1.5, y: 1.5, z: 1.5 }
@@ -113,17 +125,33 @@ function handle3DPlot(data) {
     Plotly.purge('myChart');
     
     // Renderuj nowy wykres
-    Plotly.newPlot('myChart', traces, layout, {
+    // Add custom fullscreen button (parity with 2D)
+    const chartContainerEl = document.getElementById('chartContainer');
+    const fsIcon = { width: 512, height: 512, path: 'M0,96 L0,0 96,0 96,32 32,32 32,96 Z M416,0 512,0 512,96 480,96 480,32 416,32 Z M0,416 32,416 32,480 96,480 96,512 0,512 Z M480,416 512,416 512,512 416,512 416,480 480,480 Z' };
+    const fsButton = {
+        name: 'fullscreen',
+        title: 'Pełny ekran (F)',
+        icon: fsIcon,
+        click: () => {
+            try {
+                if (document.fullscreenElement === chartContainerEl) {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                } else if (chartContainerEl && chartContainerEl.requestFullscreen) {
+                    chartContainerEl.requestFullscreen();
+                }
+                setTimeout(() => { try { const div = document.getElementById('myChart'); if (div) Plotly.Plots.resize(div); } catch(_) {} }, 100);
+            } catch (_) {}
+        }
+    };
+
+    const config3d = {
         responsive: true,
+        scrollZoom: true,
         displayModeBar: true,
-        modeBarButtons: [[
-            'toImage', 
-            'zoom3d', 
-            'pan3d', 
-            'orbitRotation', 
-            'resetCameraDefault3d'
-        ]]
-    }).then(() => {
+        modeBarButtonsToAdd: [fsButton]
+    };
+
+    Plotly.newPlot('myChart', traces, layout, config3d).then(() => {
         console.log('Wykres został wyrenderowany');
         errorDisplay.textContent = '';
     }).catch(error => {
@@ -376,6 +404,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     'legend.bgcolor': theme.legendBg,
                     'legend.bordercolor': theme.legendBorder
                 };
+                // If 3D scene present, theme its axes too
+                if (myChart.layout && myChart.layout.scene) {
+                    Object.assign(relayout, {
+                        'scene.bgcolor': theme.plot,
+                        'scene.xaxis.gridcolor': theme.grid,
+                        'scene.yaxis.gridcolor': theme.grid,
+                        'scene.zaxis.gridcolor': theme.grid,
+                        'scene.xaxis.linecolor': theme.axis,
+                        'scene.yaxis.linecolor': theme.axis,
+                        'scene.zaxis.linecolor': theme.axis,
+                        'scene.xaxis.tickfont.color': theme.tick,
+                        'scene.yaxis.tickfont.color': theme.tick,
+                        'scene.zaxis.tickfont.color': theme.tick,
+                        'scene.xaxis.zerolinecolor': theme.zeroline,
+                        'scene.yaxis.zerolinecolor': theme.zeroline,
+                        'scene.zaxis.zerolinecolor': theme.zeroline,
+                    });
+                }
                 Plotly.relayout(myChart, relayout);
             }
         } catch(_) {}
@@ -1190,6 +1236,63 @@ document.addEventListener('DOMContentLoaded', () => {
         if (inputs) {
             inputs.querySelectorAll('.inline-presets').forEach(el => el.style.display = 'flex');
         }
+
+        // Ustaw domyślne wartości funkcji/zakresów dla ładnego i szybkiego startu (tylko gdy puste)
+        const isEmpty = (v) => v == null || String(v).trim() === '';
+        let justDefaulted = false;
+        if (mode === 'cartesian') {
+            if (functionInput && isEmpty(functionInput.value)) { functionInput.value = 'sin(x)'; justDefaulted = true; }
+            if (function2Input && isEmpty(function2Input.value)) { function2Input.value = ''; }
+            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-2*pi';
+            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '2*pi';
+            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-2';
+            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '2';
+            const piAxis = document.getElementById('piAxisCheckbox');
+            if (piAxis && justDefaulted) piAxis.checked = true;
+        } else if (mode === 'parametric') {
+            if (xParamInput && isEmpty(xParamInput.value)) { xParamInput.value = 'cos(t)'; justDefaulted = true; }
+            if (yParamInput && isEmpty(yParamInput.value)) { yParamInput.value = 'sin(t)'; justDefaulted = true; }
+            const tMinEl = document.getElementById('tMinInput');
+            const tMaxEl = document.getElementById('tMaxInput');
+            if (tMinEl && isEmpty(tMinEl.value)) tMinEl.value = '0';
+            if (tMaxEl && isEmpty(tMaxEl.value)) tMaxEl.value = '2*pi';
+            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-1.5';
+            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '1.5';
+            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-1.5';
+            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '1.5';
+        } else if (mode === 'polar') {
+            if (rInput && isEmpty(rInput.value)) { rInput.value = '1 + 0.5*cos(6*t)'; justDefaulted = true; }
+            const thMinEl = document.getElementById('thetaMinInput');
+            const thMaxEl = document.getElementById('thetaMaxInput');
+            if (thMinEl && isEmpty(thMinEl.value)) thMinEl.value = '0';
+            if (thMaxEl && isEmpty(thMaxEl.value)) thMaxEl.value = '2*pi';
+            if (xMinInput && isEmpty(xMinInput.value)) xMinInput.value = '-2';
+            if (xMaxInput && isEmpty(xMaxInput.value)) xMaxInput.value = '2';
+            if (yMinInput && isEmpty(yMinInput.value)) yMinInput.value = '-2';
+            if (yMaxInput && isEmpty(yMaxInput.value)) yMaxInput.value = '2';
+        } else if (mode === '3d') {
+            const s = document.getElementById('surfaceInput');
+            if (s) {
+                if (isEmpty(s.value)) {
+                    s.value = 'sin(x)*cos(y)';
+                    justDefaulted = true;
+                }
+                s.focus();
+                try { const len = s.value.length; s.setSelectionRange(len, len); } catch(_) {}
+            }
+            const xMin3D = document.getElementById('xMin3D');
+            const xMax3D = document.getElementById('xMax3D');
+            const yMin3D = document.getElementById('yMin3D');
+            const yMax3D = document.getElementById('yMax3D');
+            const res3D = document.getElementById('resolution3D');
+            if (xMin3D && isEmpty(xMin3D.value)) xMin3D.value = '-5';
+            if (xMax3D && isEmpty(xMax3D.value)) xMax3D.value = '5';
+            if (yMin3D && isEmpty(yMin3D.value)) yMin3D.value = '-5';
+            if (yMax3D && isEmpty(yMax3D.value)) yMax3D.value = '5';
+            if (res3D && isEmpty(res3D.value)) res3D.value = '40';
+            // Jeśli dostępny, odśwież wykryte parametry, aby pokazać suwaki a,b,c
+            try { if (typeof paramsUpdater !== 'undefined' && paramsUpdater) paramsUpdater(); } catch(_) {}
+        }
         
         // Aktualizuj tekst pomocniczy
         const helperTexts = {
@@ -1201,24 +1304,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modeHelper.textContent = helperTexts[mode] || '';
 
         // Tryb 3D: ustaw domyślną funkcję i fokus, a także zainicjuj suwaki parametrów
-        if (mode === '3d') {
-            const s = document.getElementById('surfaceInput');
-            if (s) {
-                if (!s.value || s.value.trim() === '') {
-                    s.value = 'a*x + b*y + c';
-                }
-                // Fokus i kursor na końcu
-                s.focus();
-                try {
-                    const len = s.value.length;
-                    s.setSelectionRange(len, len);
-                } catch (_) {}
-            }
-            // Jeśli dostępny, odśwież wykryte parametry, aby pokazać suwaki a,b,c
-            try {
-                if (typeof paramsUpdater !== 'undefined' && paramsUpdater) paramsUpdater();
-            } catch (_) {}
-        }
+        // (Sekcja 3D domyślna została przeniesiona wyżej, aby ustawić ładne wartości startowe)
     }
 
     // Słuchacz zmiany trybu
@@ -3387,6 +3473,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.is3D) {
                     // Dane 3D - stwórz ślad scatter3d
                     loadedDataTrace = null; // Clear 2D trace
+                    const t = getActiveTheme();
+                    const mc = (t.lines && t.lines.secondary) ? t.lines.secondary : 'rgba(50, 150, 230, 0.8)';
+                    const ml = (t.lines && t.lines.primary) ? t.lines.primary : 'rgba(0, 100, 180, 1)';
                     loadedData3DTrace = {
                         x: data.x,
                         y: data.y,
@@ -3395,9 +3484,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         type: 'scatter3d',
                         name: 'Dane 3D 📊',
                         marker: { 
-                            color: 'rgba(230, 50, 50, 0.8)', 
+                            color: mc, 
                             size: 5,
-                            line: { color: 'rgba(180, 0, 0, 1)', width: 0.5 }
+                            line: { color: ml, width: 0.5 }
                         }
                     };
                     errorDisplay.textContent = `✓ Załadowano ${data.x.length} punktów 3D.`;
@@ -3462,6 +3551,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.is3D) {
                     // Dane 3D z API
                     loadedDataTrace = null;
+                    const t = getActiveTheme();
+                    const mc = (t.lines && t.lines.secondary) ? t.lines.secondary : 'rgba(50, 150, 230, 0.8)';
+                    const ml = (t.lines && t.lines.primary) ? t.lines.primary : 'rgba(0, 100, 180, 1)';
                     loadedData3DTrace = {
                         x: data.x,
                         y: data.y,
@@ -3470,9 +3562,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         type: 'scatter3d',
                         name: 'Dane 3D z API 🌐',
                         marker: { 
-                            color: 'rgba(50, 150, 230, 0.8)', 
+                            color: mc, 
                             size: 5,
-                            line: { color: 'rgba(0, 100, 180, 1)', width: 0.5 }
+                            line: { color: ml, width: 0.5 }
                         }
                     };
                     errorDisplay.textContent = `✓ Pobrano ${data.x.length} punktów 3D z API.`;
@@ -3790,6 +3882,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load history on startup
     loadHistory();
+    // Ustaw szybki preset próbkowania przy pierwszym uruchomieniu (dla szybkości)
+    try {
+        if (samplingPreset && !localStorage.getItem('samplingPresetInit')) {
+            samplingPreset.value = 'fast';
+            samplingPreset.dispatchEvent(new Event('change', { bubbles: true }));
+            localStorage.setItem('samplingPresetInit', '1');
+        }
+    } catch(_) {}
+    // Jednorazowy auto-plot na starcie, aby od razu coś ładnego wyświetlić
+    try {
+        if (!localStorage.getItem('initialPlotted')) {
+            setTimeout(() => { const btn = document.getElementById('plotButton'); if (btn) btn.click(); }, 50);
+            localStorage.setItem('initialPlotted', '1');
+        }
+    } catch(_) {}
     
     // === KONIEC HISTORII ===
 
