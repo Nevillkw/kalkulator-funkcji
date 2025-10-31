@@ -26,6 +26,14 @@
                     </div>
                 </fieldset>
 
+                <!-- GRUPA: Motyw (przełącznik) -->
+                <fieldset class="ui-group">
+                    <legend>🎨 Motyw</legend>
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="deflatulThemeToggle"> deflatul
+                    </label>
+                </fieldset>
+
                 <!-- GRUPA: Definicja funkcji -->
                 <fieldset class="ui-group">
                     <legend>✏️ Funkcje</legend>
@@ -214,13 +222,16 @@
                         <div class="group-content">
                             <button id="autoFit" style="width:100%;margin-bottom:6px;font-size:12px;padding:6px;">Auto-fit</button>
                             <button id="resetView" style="width:100%;margin-bottom:8px;font-size:12px;padding:6px;">Reset widoku</button>
-                            <div class="navigation-controls">
-                                <button id="zoomIn" title="Przybliż">+</button>
-                                <button id="zoomOut" title="Oddal">-</button>
-                                <button id="panLeft" title="Przesuń w lewo">←</button>
-                                <button id="panRight" title="Przesuń w prawo">→</button>
-                                <button id="panUp" title="Przesuń w górę">↑</button>
-                                <button id="panDown" title="Przesuń w dół">↓</button>
+                            <div class="navigation-controls" aria-label="Nawigacja wykresu">
+                                <span></span>
+                                <button id="panUp" title="Przesuń w górę" aria-label="Góra">↑</button>
+                                <span></span>
+                                <button id="panLeft" title="Przesuń w lewo" aria-label="Lewo">←</button>
+                                <button id="zoomIn" title="Przybliż" aria-label="Przybliż">+</button>
+                                <button id="panRight" title="Przesuń w prawo" aria-label="Prawo">→</button>
+                                <span></span>
+                                <button id="panDown" title="Przesuń w dół" aria-label="Dół">↓</button>
+                                <button id="zoomOut" title="Oddal" aria-label="Oddal">−</button>
                             </div>
                         </div>
                     </details>
@@ -266,9 +277,6 @@
                                     <input type="number" id="integralB" value="1" step="0.1" style="width:60px;padding:4px;font-size:12px;">
                                 </div>
                                 <button id="calculateIntegralButton" style="width:100%;font-size:12px;padding:6px;" title="Automatycznie oblicza się po zmianie granic">📊 Oblicz i zacieniuj</button>
-                                <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;">
-                                    <input type="checkbox" id="showIntegralLabel"> Pokaż wartość całki na wykresie
-                                </label>
                             </div>
                             
                             <!-- Pole między krzywymi (tylko kartezjański) -->
@@ -312,6 +320,167 @@
             <div class="calculator-content">
                 <div id="chartContainer" class="chart-container">
                     <div id="myChart"></div>
+                    <!-- RUCHOMY PANEL FULLSCREEN: wszystkie opcje w jednym miejscu -->
+                    <div id="fsDock" class="fs-dock" aria-hidden="true">
+                        <div id="fsDockHeader" class="fs-dock-header" title="Przeciągnij, aby przenieść panel">
+                            <span style="font-weight:600;color:#0d47a1;">Panel pełnoekranowy</span>
+                            <button id="fsDockToggle" class="fs-dock-toggle" title="Zwiń/rozwiń panel" aria-label="Zwiń/rozwiń">▾</button>
+                            <span style="margin-left:auto;color:#90a4ae;cursor:move;">⋮⋮</span>
+                        </div>
+                        <div class="fs-dock-body">
+                            <div class="fs-dock-section">
+                                <div class="fs-range" id="fsRange">x:[—, —] y:[—, —]</div>
+                                <div class="fs-actions">
+                                    <button id="fsAutoFit" title="Dopasuj do danych">Auto‑fit</button>
+                                    <button id="fsReset" title="Reset widoku">Reset</button>
+                                    <button id="fsReplot" title="Przerysuj z min/max">Rysuj zakres</button>
+                                    <button id="fsExit" title="Wyjdź z pełnego ekranu">Wyjdź</button>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="fs-dock-section" data-key="nav">
+                                <div class="fs-dock-title">🧭 Nawigacja</div>
+                                <div class="fs-nav" aria-label="Nawigacja wykresu">
+                                    <span></span>
+                                    <button id="fsPanUp" title="Przesuń w górę" aria-label="Góra">↑</button>
+                                    <span></span>
+                                    <button id="fsPanLeft" title="Przesuń w lewo" aria-label="Lewo">←</button>
+                                    <button id="fsZoomIn" title="Przybliż" aria-label="Przybliż">+</button>
+                                    <button id="fsPanRight" title="Przesuń w prawo" aria-label="Prawo">→</button>
+                                    <span></span>
+                                    <button id="fsPanDown" title="Przesuń w dół" aria-label="Dół">↓</button>
+                                    <button id="fsZoomOut" title="Oddal" aria-label="Oddal">−</button>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="fs-dock-section" data-key="plot-mode">
+                                <div class="fs-dock-title">📊 Tryb wykresu</div>
+                                <div>
+                                    <select id="fsPlotMode" style="width:100%;padding:8px;font-size:14px;">
+                                        <option value="cartesian">Kartezjański (y = f(x))</option>
+                                        <option value="parametric">Parametryczny (x(t), y(t))</option>
+                                        <option value="polar">Biegunowy (r(t))</option>
+                                        <option value="3d">Powierzchnia 3D (z = f(x,y))</option>
+                                    </select>
+                                    <div id="fsModeHelper" class="mode-helper"></div>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="fs-dock-section" data-key="inputs">
+                                <div class="fs-dock-title">Wzory i zakresy</div>
+                                <!-- Dynamicznie wypełniane polami dla aktywnego trybu -->
+                                <div id="fsInputs" class="fs-inputs"></div>
+                            </div>
+                            <hr>
+                            <div class="fs-dock-section" data-key="params">
+                                <div class="fs-dock-title">Parametry</div>
+                                <div id="fsParams" class="fs-params"></div>
+                            </div>
+                            <hr>
+                            <div class="fs-dock-section" data-key="analysis">
+                                <div class="fs-dock-title">🔍 Analiza</div>
+                                <div class="fs-grid-2">
+                                    <label><input type="checkbox" id="fsZeros"> 🎯 Miejsca zerowe</label>
+                                    <label><input type="checkbox" id="fsExtrema"> ⛰️ Ekstrema</label>
+                                    <label><input type="checkbox" id="fsInflections"> 🔄 Punkty przegięcia</label>
+                                    <label><input type="checkbox" id="fsIntersections"> ✖️ Punkty przecięcia</label>
+                                    <label><input type="checkbox" id="fsDerivative"> 📈 <span id="fsDerivativeLabelText">Rysuj/licz pochodną</span></label>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="fs-dock-section" data-key="integrals">
+                                <div class="fs-dock-title">Całki</div>
+                                <div class="fs-inputs">
+                                    <div class="fs-grid-2col" id="fsIntRangeRow">
+                                        <div>
+                                            <label for="fsIntA">a</label>
+                                            <input type="text" id="fsIntA" placeholder="np. 0">
+                                        </div>
+                                        <div>
+                                            <label for="fsIntB">b</label>
+                                            <input type="text" id="fsIntB" placeholder="np. pi">
+                                        </div>
+                                    </div>
+                                    <div id="fsIntegralControlsRow" style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+                                        <button id="fsIntegralButton" title="Oblicz całkę i wizualizuj">Oblicz całkę</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="fs-dock-section" id="fsBetweenSection" data-key="between">
+                                <div class="fs-dock-title">Pole między krzywymi</div>
+                                <div class="fs-inputs">
+                                    <div class="fs-grid-2col">
+                                        <div>
+                                            <label for="fsBetweenA">a</label>
+                                            <input type="text" id="fsBetweenA" placeholder="np. -1">
+                                        </div>
+                                        <div>
+                                            <label for="fsBetweenB">b</label>
+                                            <input type="text" id="fsBetweenB" placeholder="np. 1">
+                                        </div>
+                                    </div>
+                                    <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+                                        <button id="fsBetweenButton" title="Oblicz pole między krzywymi">Oblicz pole</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="fs-dock-section" data-key="render">
+                                <div class="fs-dock-title">⚙️ Renderowanie</div>
+                                <div class="fs-grid-2">
+                                    <div>
+                                        <label for="fsAngleMode" style="display:block;margin-bottom:6px;font-weight:500;">Kąty:</label>
+                                        <select id="fsAngleMode" style="width:100%;padding:8px;">
+                                            <option value="radians">Radiany</option>
+                                            <option value="degrees">Stopnie</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="fsSamplingPreset" style="display:block;margin-bottom:6px;font-weight:500;">Dokładność:</label>
+                                        <select id="fsSamplingPreset" style="width:100%;padding:8px;">
+                                            <option value="default">Domyślna</option>
+                                            <option value="fast">Szybko</option>
+                                            <option value="quality">Precyzyjna</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style="margin-top:10px;">
+                                    <label style="display:flex;align-items:center;cursor:pointer;">
+                                        <input type="checkbox" id="fsPiAxis">&nbsp;Oś X w wielokrotnościach π
+                                    </label>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="fs-dock-section" data-key="appearance">
+                                <div class="fs-dock-title">Wygląd</div>
+                                <div class="fs-grid-2">
+                                    <label><input type="checkbox" id="fsLegend"> Legenda</label>
+                                    <label><input type="checkbox" id="fsGrid" checked> Siatka</label>
+                                    <label><input type="checkbox" id="fsZeroLines" checked> Osie 0</label>
+                                    <label><input type="checkbox" id="fsTicks" checked> Opisy osi</label>
+                                    <label><input type="checkbox" id="fsEqualAspect"> Równa skala</label>
+                                    <label><input type="checkbox" id="fsDark"> Ciemny motyw</label>
+                                </div>
+                                <div class="fs-slider">
+                                    <span>Grubość linii</span>
+                                    <input type="range" id="fsLineWidth" min="1" max="7" value="3">
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="fs-dock-section" id="fsAnalysisSection" data-key="results">
+                                <div class="fs-dock-title">📈 Wyniki analizy</div>
+                                <div id="fsAnalysisResultsContent" class="fs-analysis-content" style="font-size:12px;color:#37474f;line-height:1.6;"></div>
+                            </div>
+                            <hr>
+                            <div class="fs-dock-section" id="fsHistorySection" data-key="history">
+                                <div class="fs-dock-title">🕘 Historia</div>
+                                <div id="fsHistoryList" class="fs-history-list" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:6px;"></div>
+                                <button id="fsClearHistoryButton" style="margin-top:6px;">Wyczyść historię</button>
+                            </div>
+                            
+                        </div>
+                    </div>
                 </div>
                 <p id="errorDisplay"></p>
                 <!-- Wspólny kontener: jeden przycisk zwija/rozwija wyniki i historię -->
@@ -450,6 +619,6 @@
     </script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    <script src="script.js?v=20251030"></script>
+    <script src="script.js?v=20251031"></script>
 </body>
 </html>

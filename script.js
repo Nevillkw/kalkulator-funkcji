@@ -227,8 +227,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearDataButton = document.getElementById('clearDataButton');
     const historyList = document.getElementById('historyList');
     const clearHistoryButton = document.getElementById('clearHistoryButton');
+    const fsClearHistoryButton = document.getElementById('fsClearHistoryButton');
     const insightsToggle = document.getElementById('insightsToggle');
     const chartContainer = document.getElementById('chartContainer');
+    // Theme toggle (deflatul)
+    const deflatulToggle = document.getElementById('deflatulThemeToggle');
+    // FS HUD elements
+    const fsRangeEl = document.getElementById('fsRange');
+    const fsAutoFitBtn = document.getElementById('fsAutoFit');
+    const fsResetBtn = document.getElementById('fsReset');
+    const fsExitBtn = document.getElementById('fsExit');
+    const fsReplotBtn = document.getElementById('fsReplot');
+    const fsDock = document.getElementById('fsDock');
+    const fsDockHeader = document.getElementById('fsDockHeader');
+    const fsDockToggle = document.getElementById('fsDockToggle');
+    const fsInputsContainer = document.getElementById('fsInputs');
+    const fsIntA = document.getElementById('fsIntA');
+    const fsIntB = document.getElementById('fsIntB');
+    const fsIntegralButton = document.getElementById('fsIntegralButton');
+    const fsIntRangeRow = document.getElementById('fsIntRangeRow');
+    const fsBetweenSection = document.getElementById('fsBetweenSection');
+    const fsBetweenA = document.getElementById('fsBetweenA');
+    const fsBetweenB = document.getElementById('fsBetweenB');
+    const fsBetweenButton = document.getElementById('fsBetweenButton');
+    const fsParamsContainer = document.getElementById('fsParams');
+    const fsPlotMode = document.getElementById('fsPlotMode');
+    const fsModeHelper = document.getElementById('fsModeHelper');
+    const fsAngleMode = document.getElementById('fsAngleMode');
+    const fsSamplingPreset = document.getElementById('fsSamplingPreset');
+    const fsPiAxis = document.getElementById('fsPiAxis');
+    const fsZoomIn = document.getElementById('fsZoomIn');
+    const fsZoomOut = document.getElementById('fsZoomOut');
+    const fsPanLeft = document.getElementById('fsPanLeft');
+    const fsPanRight = document.getElementById('fsPanRight');
+    const fsPanUp = document.getElementById('fsPanUp');
+    const fsPanDown = document.getElementById('fsPanDown');
+    // FS left controls
+    const fsControls = document.getElementById('fsControls');
+    // FS analysis toggles
+    const fsZeros = document.getElementById('fsZeros');
+    const fsExtrema = document.getElementById('fsExtrema');
+    const fsInflections = document.getElementById('fsInflections');
+    const fsIntersections = document.getElementById('fsIntersections');
+    const fsDerivative = document.getElementById('fsDerivative');
+    const fsLegend = document.getElementById('fsLegend');
+    const fsGrid = document.getElementById('fsGrid');
+    const fsZeroLines = document.getElementById('fsZeroLines');
+    const fsTicks = document.getElementById('fsTicks');
+    const fsEqualAspect = document.getElementById('fsEqualAspect');
+    const fsDark = document.getElementById('fsDark');
+    const fsLineWidth = document.getElementById('fsLineWidth');
 
     // 1) Zapamiętywanie stanu rozwinięcia panelu (details)
     try {
@@ -244,6 +292,52 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (_) {}
 
     // (usunięto belkę do zmiany wysokości — brak dodatkowej logiki)
+
+    // 2) Motyw: deflatul (globalny)
+    const THEMES = {
+        default: {
+            paper: '#ffffff', plot: '#ffffff', grid: '#e9ecef',
+            axis: '#607d8b', tick: '#546e7a', zeroline: '#9e9e9e', font: '#263238'
+        },
+        deflatul: {
+            paper: '#eef3f8', plot: '#eef3f8', grid: '#cfd8e3',
+            axis: '#5a6f8a', tick: '#3b4b63', zeroline: '#9db0c7', font: '#2b3b55'
+        }
+    };
+    function applyTheme(themeName){
+        const theme = THEMES[themeName] || THEMES.default;
+        const root = document.body || document.documentElement;
+        if (themeName === 'deflatul') root.classList.add('theme-deflatul'); else root.classList.remove('theme-deflatul');
+        // Update Plotly layout colors (both normal and fullscreen)
+        try {
+            if (myChart && window.Plotly) {
+                const relayout = {
+                    'paper_bgcolor': theme.paper,
+                    'plot_bgcolor': theme.plot,
+                    'xaxis.gridcolor': theme.grid,
+                    'yaxis.gridcolor': theme.grid,
+                    'xaxis.linecolor': theme.axis,
+                    'yaxis.linecolor': theme.axis,
+                    'xaxis.tickfont.color': theme.tick,
+                    'yaxis.tickfont.color': theme.tick,
+                    'xaxis.zerolinecolor': theme.zeroline,
+                    'yaxis.zerolinecolor': theme.zeroline,
+                    'font.color': theme.font
+                };
+                Plotly.relayout(myChart, relayout);
+            }
+        } catch(_) {}
+        try { localStorage.setItem('theme', themeName); } catch(_) {}
+    }
+    // Initialize theme from storage and bind toggle
+    try {
+        const savedTheme = localStorage.getItem('theme') || 'default';
+        if (deflatulToggle) deflatulToggle.checked = (savedTheme === 'deflatul');
+        applyTheme(savedTheme);
+        if (deflatulToggle) deflatulToggle.addEventListener('change', () => {
+            applyTheme(deflatulToggle.checked ? 'deflatul' : 'default');
+        });
+    } catch(_) {}
 
     // 3) Pełny ekran dla wykresu
     (function setupFullscreen(){
@@ -267,8 +361,714 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.addEventListener('fullscreenchange', () => {
             try { if (window.Plotly && plotDiv) Plotly.Plots.resize(plotDiv); } catch(_) {}
+            // odśwież zakres w HUD po zmianie stanu pełnego ekranu
+            try { if (myChart) updateFsRangeFromLayout(myChart.layout); } catch(_) {}
+            // zsynchronizuj lewy panel z bieżącym layoutem
+            try { if (myChart) syncFsControlsFromLayout(myChart.layout); } catch(_) {}
+            // zsynchronizuj przełączniki analizy z panelem głównym
+            try { syncFsAnalysisFromMain(); } catch(_) {}
+            // Przywróć pozycję panelu dock
+            try { restoreFsDockPosition(); } catch(_) {}
+            // Zbuduj i zsynchronizuj pola wejściowe w docku
+            try { if (document.fullscreenElement === chartContainer) { buildFsInputsUI(); syncFsInputsFromMain(); initFsSectionCollapsing(); applyFsDockCollapsed(); } } catch(_) {}
+            // Zsynchronizuj sekcję całek i zbuduj parametry
+            try { if (document.fullscreenElement === chartContainer) { syncFsIntegralFromMain(); syncFsBetweenFromMain(); buildFsParamsUI(); syncFsParamsFromMain(); syncFsRenderFromMain(); syncFsModeFromMain(); updateFsDockModeVisibility(); displayAnalysisResults(); renderHistoryList(); } } catch(_) {}
+            // Zastosuj motyw po zmianie fullscreen (kolory Plotly)
+            try { const t = (localStorage.getItem('theme') || 'default'); applyTheme(t); } catch(_) {}
         });
     })();
+
+    // Podpięcie akcji HUD (bez resetowania stylów)
+    if (fsAutoFitBtn) fsAutoFitBtn.addEventListener('click', () => {
+        if (!myChart) return;
+        try {
+            Plotly.relayout(myChart, { 'xaxis.autorange': true, 'yaxis.autorange': true })
+                 .then(() => updateFsRangeFromLayout(myChart.layout));
+        } catch (_) {}
+    });
+    if (fsResetBtn) fsResetBtn.addEventListener('click', () => {
+        // Reset: clear all analysis, set ranges to defaults, redraw only functions
+        resetPlotViewAndAnalysis();
+    });
+    if (fsExitBtn) fsExitBtn.addEventListener('click', () => {
+        if (document.exitFullscreen) document.exitFullscreen();
+    });
+    if (fsReplotBtn) fsReplotBtn.addEventListener('click', () => {
+        // przerysuj wykres na podstawie aktualnych pól (w tym xMin/xMax/yMin/yMax)
+        const plotButton = document.getElementById('plotButton');
+        if (plotButton) plotButton.click();
+    });
+
+    // Funkcja pomocnicza: aktualizacja etykiety zakresu w HUD
+    function updateFsRangeFromLayout(layout) {
+        if (!fsRangeEl || !document.fullscreenElement) return;
+        try {
+            const xr = (layout && layout.xaxis && layout.xaxis.range) ? layout.xaxis.range : null;
+            const yr = (layout && layout.yaxis && layout.yaxis.range) ? layout.yaxis.range : null;
+            const fmt = (v) => (isFinite(v) ? Number(v).toFixed(2) : '—');
+            const label = `x:[${fmt(xr ? xr[0] : NaN)}, ${fmt(xr ? xr[1] : NaN)}]  y:[${fmt(yr ? yr[0] : NaN)}, ${fmt(yr ? yr[1] : NaN)}]`;
+            fsRangeEl.textContent = label;
+        } catch (_) {}
+    }
+
+    // Pomocnicze: pobierz indeksy ścieżek liniowych 2D (scatter)
+    function getLineTraceIndices(gd) {
+        try {
+            const inds = [];
+            (gd.data || []).forEach((t, i) => {
+                const hasModeLines = t && t.mode && typeof t.mode === 'string' && t.mode.indexOf('lines') !== -1;
+                const hasLineObj = t && t.line;
+                if (t && t.type === 'scatter' && (hasModeLines || hasLineObj)) {
+                    inds.push(i);
+                }
+            });
+            return inds;
+        } catch (_) { return []; }
+    }
+
+    // Zastosuj styl pełnoekranowy zależny od przełączników
+    function applyFsControls() {
+        if (!myChart) return;
+        const gd = myChart;
+        const relayout = {};
+
+        if (fsLegend) relayout['showlegend'] = !!fsLegend.checked;
+        if (fsGrid) {
+            relayout['xaxis.showgrid'] = !!fsGrid.checked;
+            relayout['yaxis.showgrid'] = !!fsGrid.checked;
+        }
+        if (fsZeroLines) {
+            relayout['xaxis.zeroline'] = !!fsZeroLines.checked;
+            relayout['yaxis.zeroline'] = !!fsZeroLines.checked;
+        }
+        if (fsTicks) {
+            relayout['xaxis.showticklabels'] = !!fsTicks.checked;
+            relayout['yaxis.showticklabels'] = !!fsTicks.checked;
+        }
+        if (fsEqualAspect) {
+            if (fsEqualAspect.checked) {
+                relayout['yaxis.scaleanchor'] = 'x';
+                relayout['yaxis.scaleratio'] = 1;
+            } else {
+                relayout['yaxis.scaleanchor'] = null;
+                relayout['yaxis.scaleratio'] = null;
+            }
+        }
+
+        if (fsDark) {
+            if (fsDark.checked) {
+                relayout['paper_bgcolor'] = '#0b1020';
+                relayout['plot_bgcolor'] = '#0b1020';
+                relayout['xaxis.gridcolor'] = '#2a3355';
+                relayout['yaxis.gridcolor'] = '#2a3355';
+                relayout['xaxis.linecolor'] = '#90a4ae';
+                relayout['yaxis.linecolor'] = '#90a4ae';
+                relayout['xaxis.tickfont.color'] = '#cfd8dc';
+                relayout['yaxis.tickfont.color'] = '#cfd8dc';
+                relayout['xaxis.zerolinecolor'] = '#607d8b';
+                relayout['yaxis.zerolinecolor'] = '#607d8b';
+                relayout['font.color'] = '#eceff1';
+            } else {
+                relayout['paper_bgcolor'] = '#ffffff';
+                relayout['plot_bgcolor'] = '#ffffff';
+                relayout['xaxis.gridcolor'] = '#e9ecef';
+                relayout['yaxis.gridcolor'] = '#e9ecef';
+                relayout['xaxis.linecolor'] = '#607d8b';
+                relayout['yaxis.linecolor'] = '#607d8b';
+                relayout['xaxis.tickfont.color'] = '#546e7a';
+                relayout['yaxis.tickfont.color'] = '#546e7a';
+                relayout['xaxis.zerolinecolor'] = '#9e9e9e';
+                relayout['yaxis.zerolinecolor'] = '#9e9e9e';
+                relayout['font.color'] = '#263238';
+            }
+        }
+
+        try { Plotly.relayout(gd, relayout); } catch(_) {}
+
+        // Linia: grubość
+        if (fsLineWidth) {
+            const w = parseInt(fsLineWidth.value, 10) || 3;
+            const inds = getLineTraceIndices(gd);
+            if (inds.length) {
+                try { Plotly.restyle(gd, { 'line.width': w }, inds); } catch(_) {}
+            }
+        }
+    }
+
+    // Zainicjalizuj kontrolki na podstawie aktualnego layoutu
+    function syncFsControlsFromLayout(layout) {
+        if (!layout) return;
+        if (fsLegend) fsLegend.checked = !!layout.showlegend;
+        if (fsGrid) fsGrid.checked = layout.xaxis?.showgrid !== false && layout.yaxis?.showgrid !== false;
+        if (fsZeroLines) fsZeroLines.checked = layout.xaxis?.zeroline !== false && layout.yaxis?.zeroline !== false;
+        if (fsTicks) fsTicks.checked = layout.xaxis?.showticklabels !== false && layout.yaxis?.showticklabels !== false;
+        if (fsEqualAspect) fsEqualAspect.checked = (layout.yaxis && layout.yaxis.scaleanchor === 'x');
+        if (fsLineWidth) {
+            try {
+                const firstLine = (myChart?.data || []).find(t => t && t.type === 'scatter' && t.line);
+                if (firstLine && firstLine.line && firstLine.line.width) fsLineWidth.value = firstLine.line.width;
+            } catch(_) {}
+        }
+    }
+
+    // Słuchacze kontrolek
+    [fsLegend, fsGrid, fsZeroLines, fsTicks, fsEqualAspect, fsDark].forEach(el => {
+        if (el) el.addEventListener('change', applyFsControls);
+    });
+    if (fsLineWidth) fsLineWidth.addEventListener('input', applyFsControls);
+
+    // Przenoszenie (drag) panelu fsDock + zapamiętywanie pozycji
+    function clamp(val, min, max){ return Math.max(min, Math.min(max, val)); }
+    function restoreFsDockPosition(){
+        if (!fsDock) return;
+        const saved = localStorage.getItem('fsDockPos');
+        if (!saved) return;
+        try {
+            const pos = JSON.parse(saved);
+            const rect = chartContainer.getBoundingClientRect();
+            const dockRect = fsDock.getBoundingClientRect();
+            let x = clamp(pos.x, 0, rect.width - dockRect.width);
+            let y = clamp(pos.y, 0, rect.height - dockRect.height);
+            fsDock.style.left = x + 'px';
+            fsDock.style.top = y + 'px';
+            fsDock.style.bottom = 'auto';
+        } catch(_) {}
+    }
+    (function setupDockDrag(){
+        if (!fsDock || !fsDockHeader) return;
+        let dragging = false; let startX=0, startY=0; let baseX=0, baseY=0;
+        function onMove(e){ if(!dragging) return; const p = e.touches? e.touches[0]: e; const dx=p.clientX-startX, dy=p.clientY-startY; const rect=chartContainer.getBoundingClientRect(); const dockRect=fsDock.getBoundingClientRect(); let nx = clamp(baseX+dx, 0, rect.width-dockRect.width); let ny = clamp(baseY+dy, 0, rect.height-dockRect.height); fsDock.style.left=nx+'px'; fsDock.style.top=ny+'px'; fsDock.style.bottom='auto'; }
+        function onUp(){ if(!dragging) return; dragging=false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp); try{ const rect=fsDock.getBoundingClientRect(); const parent=chartContainer.getBoundingClientRect(); const pos={ x: rect.left-parent.left, y: rect.top-parent.top }; localStorage.setItem('fsDockPos', JSON.stringify(pos)); }catch(_){} }
+        function onDown(e){ const p = e.touches? e.touches[0]: e; const rect=fsDock.getBoundingClientRect(); const parent=chartContainer.getBoundingClientRect(); startX=p.clientX; startY=p.clientY; baseX=rect.left-parent.left; baseY=rect.top-parent.top; dragging=true; document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); document.addEventListener('touchmove', onMove, {passive:false}); document.addEventListener('touchend', onUp); e.preventDefault(); }
+        fsDockHeader.addEventListener('mousedown', onDown);
+        fsDockHeader.addEventListener('touchstart', onDown, {passive:false});
+    })();
+
+    // === FS Dock collapsing (whole panel & per-section) ===
+    function applyFsDockCollapsed(){
+        if (!fsDock) return;
+        try {
+            const collapsed = localStorage.getItem('fsDockCollapsed') === '1';
+            if (collapsed) fsDock.classList.add('collapsed'); else fsDock.classList.remove('collapsed');
+        } catch(_) {}
+    }
+    function toggleFsDockCollapsed(){
+        if (!fsDock) return;
+        fsDock.classList.toggle('collapsed');
+        try { localStorage.setItem('fsDockCollapsed', fsDock.classList.contains('collapsed') ? '1' : '0'); } catch(_) {}
+    }
+    if (fsDockToggle) {
+        fsDockToggle.addEventListener('click', (e) => { e.stopPropagation(); toggleFsDockCollapsed(); });
+    }
+    if (fsDockHeader) {
+        fsDockHeader.addEventListener('dblclick', (e) => { e.preventDefault(); toggleFsDockCollapsed(); });
+    }
+
+    function loadFsSectionState(){
+        try { return JSON.parse(localStorage.getItem('fsDockSections')||'{}'); } catch(_) { return {}; }
+    }
+    function saveFsSectionState(state){
+        try { localStorage.setItem('fsDockSections', JSON.stringify(state||{})); } catch(_) {}
+    }
+    function initFsSectionCollapsing(){
+        if (!fsDock) return;
+        const body = fsDock.querySelector('.fs-dock-body');
+        if (!body) return;
+        // Apply saved or default states to all sections
+        const state = loadFsSectionState() || {};
+        let stateChanged = false;
+        body.querySelectorAll('.fs-dock-section[data-key]').forEach(sec => {
+            const key = sec.getAttribute('data-key');
+            // Default: collapse all sections except navigation ('nav')
+            let collapsed = state.hasOwnProperty(key) ? !!state[key] : (key !== 'nav');
+            // Persist default on first run so it's stable across sessions
+            if (!state.hasOwnProperty(key)) { state[key] = collapsed; stateChanged = true; }
+            if (collapsed) sec.classList.add('collapsed'); else sec.classList.remove('collapsed');
+        });
+        if (stateChanged) saveFsSectionState(state);
+        // Bind a single delegated click handler once
+        if (!body.dataset.collapseBound) {
+            body.addEventListener('click', (e) => {
+                // Find nearest title clicked
+                const titleEl = e.target && (e.target.closest ? e.target.closest('.fs-dock-title') : null);
+                if (!titleEl || !body.contains(titleEl)) return;
+                // Ignore clicks originating from form controls inside title (if any)
+                const tn = (e.target.tagName || '').toUpperCase();
+                if (tn === 'INPUT' || tn === 'SELECT' || tn === 'BUTTON' || tn === 'TEXTAREA') return;
+                const section = titleEl.closest('.fs-dock-section');
+                if (!section) return;
+                const key = section.getAttribute('data-key');
+                section.classList.toggle('collapsed');
+                const s = loadFsSectionState();
+                s[key] = section.classList.contains('collapsed');
+                saveFsSectionState(s);
+            });
+            body.dataset.collapseBound = '1';
+        }
+    }
+    // Initialize immediately if elements are present
+    try { initFsSectionCollapsing(); applyFsDockCollapsed(); } catch(_) {}
+
+    // === Fullscreen Dock: Inputs for formulas and ranges ===
+    function buildFsInputsUI() {
+        if (!fsInputsContainer) return;
+        const mode = (plotMode && plotMode.value) || 'cartesian';
+        let html = '';
+        if (mode === 'cartesian') {
+            html = `
+                <div class="fs-row">
+                    <div>
+                        <label for="fsFunction1">f₁(x) =</label>
+                        <input type="text" id="fsFunction1" placeholder="np. sin(x) lub x^2">
+                    </div>
+                    <div>
+                        <label for="fsFunction2">f₂(x) =</label>
+                        <input type="text" id="fsFunction2" placeholder="druga funkcja (opcjonalnie)">
+                    </div>
+                </div>
+                <div class="fs-grid-4col" style="margin-top:6px;">
+                    <div><label for="fsXMin">X min</label><input type="text" id="fsXMin" placeholder="np. -2*pi"></div>
+                    <div><label for="fsXMax">X max</label><input type="text" id="fsXMax" placeholder="np. 2*pi"></div>
+                    <div><label for="fsYMin">Y min</label><input type="text" id="fsYMin"></div>
+                    <div><label for="fsYMax">Y max</label><input type="text" id="fsYMax"></div>
+                </div>
+                <div class="hint">Podpowiedź: możesz wpisywać wyrażenia z π, np. pi/3, 2*pi.</div>
+            `;
+        } else if (mode === 'parametric') {
+            html = `
+                <div class="fs-row">
+                    <div>
+                        <label for="fsXParam">x(t) =</label>
+                        <input type="text" id="fsXParam" placeholder="np. cos(t)">
+                    </div>
+                    <div>
+                        <label for="fsYParam">y(t) =</label>
+                        <input type="text" id="fsYParam" placeholder="np. sin(t)">
+                    </div>
+                </div>
+                <div class="fs-grid-2col" style="margin-top:6px;">
+                    <div><label for="fsTMin">t min</label><input type="text" id="fsTMin" placeholder="np. 0"></div>
+                    <div><label for="fsTMax">t max</label><input type="text" id="fsTMax" placeholder="np. 2*pi"></div>
+                </div>
+            `;
+        } else if (mode === 'polar') {
+            html = `
+                <div class="fs-row">
+                    <div>
+                        <label for="fsR">r(t) =</label>
+                        <input type="text" id="fsR" placeholder="np. 1 + 0.5*cos(6*t)">
+                    </div>
+                </div>
+                <div class="fs-grid-2col" style="margin-top:6px;">
+                    <div><label for="fsThetaMin">θ min</label><input type="text" id="fsThetaMin" placeholder="0"></div>
+                    <div><label for="fsThetaMax">θ max</label><input type="text" id="fsThetaMax" placeholder="2*pi"></div>
+                </div>
+            `;
+        } else if (mode === '3d') {
+            html = `
+                <div class="fs-row">
+                    <div>
+                        <label for="fsSurface">z(x,y) =</label>
+                        <input type="text" id="fsSurface" placeholder="np. sin(x)*cos(y)">
+                    </div>
+                </div>
+                <div class="fs-grid-4col" style="margin-top:6px;">
+                    <div><label for="fsXMin3D">X min</label><input type="text" id="fsXMin3D"></div>
+                    <div><label for="fsXMax3D">X max</label><input type="text" id="fsXMax3D"></div>
+                    <div><label for="fsYMin3D">Y min</label><input type="text" id="fsYMin3D"></div>
+                    <div><label for="fsYMax3D">Y max</label><input type="text" id="fsYMax3D"></div>
+                </div>
+                <div class="fs-grid-2col" style="margin-top:6px;">
+                    <div><label for="fsResolution3D">Rozdzielczość</label><input type="text" id="fsResolution3D" placeholder="np. 50"></div>
+                </div>
+            `;
+        }
+        fsInputsContainer.innerHTML = html;
+        wireFsInputsForMode();
+    }
+
+    function wireFsInputsForMode() {
+        const mode = (plotMode && plotMode.value) || 'cartesian';
+        const enterToPlot = (el) => { if (!el) return; el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const btn = document.getElementById('plotButton'); if (btn) btn.click(); } }); };
+        const mirrorSet = (fsEl, mainEl) => {
+            if (!fsEl || !mainEl) return;
+            // FS -> Main
+            const forward = () => { if (mainEl.value !== fsEl.value) { mainEl.value = fsEl.value; mainEl.dispatchEvent(new Event('input', { bubbles: true })); } };
+            fsEl.addEventListener('input', forward);
+            fsEl.addEventListener('change', forward);
+            enterToPlot(fsEl);
+        };
+        if (mode === 'cartesian') {
+            mirrorSet(document.getElementById('fsFunction1'), document.getElementById('functionInput'));
+            mirrorSet(document.getElementById('fsFunction2'), document.getElementById('function2Input'));
+            mirrorSet(document.getElementById('fsXMin'), document.getElementById('xMin'));
+            mirrorSet(document.getElementById('fsXMax'), document.getElementById('xMax'));
+            mirrorSet(document.getElementById('fsYMin'), document.getElementById('yMin'));
+            mirrorSet(document.getElementById('fsYMax'), document.getElementById('yMax'));
+        } else if (mode === 'parametric') {
+            mirrorSet(document.getElementById('fsXParam'), document.getElementById('xParamInput'));
+            mirrorSet(document.getElementById('fsYParam'), document.getElementById('yParamInput'));
+            mirrorSet(document.getElementById('fsTMin'), document.getElementById('tMinInput'));
+            mirrorSet(document.getElementById('fsTMax'), document.getElementById('tMaxInput'));
+        } else if (mode === 'polar') {
+            mirrorSet(document.getElementById('fsR'), document.getElementById('rInput'));
+            mirrorSet(document.getElementById('fsThetaMin'), document.getElementById('thetaMinInput'));
+            mirrorSet(document.getElementById('fsThetaMax'), document.getElementById('thetaMaxInput'));
+        } else if (mode === '3d') {
+            mirrorSet(document.getElementById('fsSurface'), document.getElementById('surfaceInput'));
+            mirrorSet(document.getElementById('fsXMin3D'), document.getElementById('xMin3D'));
+            mirrorSet(document.getElementById('fsXMax3D'), document.getElementById('xMax3D'));
+            mirrorSet(document.getElementById('fsYMin3D'), document.getElementById('yMin3D'));
+            mirrorSet(document.getElementById('fsYMax3D'), document.getElementById('yMax3D'));
+            mirrorSet(document.getElementById('fsResolution3D'), document.getElementById('resolution3D'));
+        }
+    }
+
+    function syncFsInputsFromMain() {
+        if (!fsInputsContainer || document.fullscreenElement !== chartContainer) return;
+        const mode = (plotMode && plotMode.value) || 'cartesian';
+        const copy = (fsId, mainId) => {
+            const fsEl = document.getElementById(fsId);
+            const mainEl = document.getElementById(mainId);
+            if (fsEl && mainEl && fsEl.value !== mainEl.value) fsEl.value = mainEl.value;
+        };
+        if (mode === 'cartesian') {
+            copy('fsFunction1','functionInput');
+            copy('fsFunction2','function2Input');
+            copy('fsXMin','xMin');
+            copy('fsXMax','xMax');
+            copy('fsYMin','yMin');
+            copy('fsYMax','yMax');
+        } else if (mode === 'parametric') {
+            copy('fsXParam','xParamInput');
+            copy('fsYParam','yParamInput');
+            copy('fsTMin','tMinInput');
+            copy('fsTMax','tMaxInput');
+        } else if (mode === 'polar') {
+            copy('fsR','rInput');
+            copy('fsThetaMin','thetaMinInput');
+            copy('fsThetaMax','thetaMaxInput');
+        } else if (mode === '3d') {
+            copy('fsSurface','surfaceInput');
+            copy('fsXMin3D','xMin3D');
+            copy('fsXMax3D','xMax3D');
+            copy('fsYMin3D','yMin3D');
+            copy('fsYMax3D','yMax3D');
+            copy('fsResolution3D','resolution3D');
+        }
+    }
+
+    // Pokaż/ukryj elementy w panelu fullscreen zależnie od trybu
+    function updateFsDockModeVisibility() {
+        const mode = (plotMode && plotMode.value) || 'cartesian';
+        const show = (el, vis = true) => { if (!el) return; el.style.display = vis ? '' : 'none'; };
+        // Pole między krzywymi tylko w kartezjańskim
+        show(fsBetweenSection, mode === 'cartesian');
+        // Całka a/b nie dotyczy 3D
+        show(fsIntRangeRow, mode !== '3d');
+        // Zaktualizuj podpis pochodnej w docku jak w panelu głównym
+        const fsDerivLabel = document.getElementById('fsDerivativeLabelText');
+        if (fsDerivLabel) {
+            if (mode === 'cartesian') fsDerivLabel.textContent = "Rysuj/licz pochodną f'(x)";
+            else if (mode === 'parametric') fsDerivLabel.textContent = 'Rysuj/licz dx/dt, dy/dt';
+            else if (mode === 'polar') fsDerivLabel.textContent = 'Rysuj/licz dr/dθ';
+        }
+        // Analiza: pokaż właściwe pola jak w panelu bocznym
+        const setLabelVis = (inputEl, vis) => {
+            if (!inputEl) return;
+            const label = inputEl.closest && inputEl.closest('label');
+            if (label) label.style.display = vis ? '' : 'none';
+        };
+        if (mode === 'cartesian') {
+            setLabelVis(fsZeros, true);
+            setLabelVis(fsExtrema, true);
+            setLabelVis(fsInflections, true);
+            setLabelVis(fsIntersections, true);
+            setLabelVis(fsDerivative, true);
+        } else if (mode === 'parametric') {
+            setLabelVis(fsZeros, false);
+            setLabelVis(fsExtrema, false);
+            setLabelVis(fsInflections, false);
+            setLabelVis(fsIntersections, false);
+            setLabelVis(fsDerivative, true);
+        } else if (mode === 'polar') {
+            setLabelVis(fsZeros, false);
+            setLabelVis(fsExtrema, false);
+            setLabelVis(fsInflections, false);
+            setLabelVis(fsIntersections, false);
+            setLabelVis(fsDerivative, true);
+        } else if (mode === '3d') {
+            setLabelVis(fsZeros, false);
+            setLabelVis(fsExtrema, false);
+            setLabelVis(fsInflections, false);
+            setLabelVis(fsIntersections, false);
+            setLabelVis(fsDerivative, false);
+        }
+    }
+
+    // === Fullscreen Dock: Tryb i Renderowanie — dwukierunkowa synchronizacja ===
+    function updateFsModeHelperText(mode) {
+        if (!fsModeHelper) return;
+        const helperTexts = {
+            cartesian: 'Użyj zmiennej x do zdefiniowania funkcji, np. sin(x) lub x^2',
+            parametric: 'Użyj zmiennej t do zdefiniowania obu równań x(t) i y(t)',
+            polar: 'Użyj zmiennej t do zdefiniowania równania r(t) w układzie biegunowym',
+            '3d': 'Użyj zmiennych x i y do zdefiniowania funkcji powierzchni z(x,y), np. sin(x)*cos(y)'
+        };
+        fsModeHelper.textContent = helperTexts[mode] || '';
+    }
+    function syncFsModeFromMain() {
+        if (fsPlotMode && plotMode && fsPlotMode.value !== plotMode.value) fsPlotMode.value = plotMode.value;
+        updateFsModeHelperText((plotMode && plotMode.value) || 'cartesian');
+    }
+    if (fsPlotMode && plotMode) {
+        fsPlotMode.addEventListener('change', () => {
+            if (plotMode.value !== fsPlotMode.value) {
+                plotMode.value = fsPlotMode.value;
+                plotMode.dispatchEvent(new Event('change', { bubbles:true }));
+            }
+            updateFsModeHelperText(fsPlotMode.value);
+        });
+        // Initialize helper text
+        updateFsModeHelperText(plotMode.value);
+    }
+
+    function syncFsRenderFromMain() {
+        const angleModeEl = document.getElementById('angleMode');
+        const piAxisEl = document.getElementById('piAxisCheckbox');
+        if (fsAngleMode && angleModeEl && fsAngleMode.value !== angleModeEl.value) fsAngleMode.value = angleModeEl.value;
+        if (fsSamplingPreset && samplingPreset && fsSamplingPreset.value !== samplingPreset.value) fsSamplingPreset.value = samplingPreset.value;
+        if (fsPiAxis && piAxisEl) fsPiAxis.checked = !!piAxisEl.checked;
+    }
+    // FS -> Main
+    if (fsAngleMode) fsAngleMode.addEventListener('change', () => {
+        const angleModeEl = document.getElementById('angleMode');
+        if (angleModeEl && angleModeEl.value !== fsAngleMode.value) {
+            angleModeEl.value = fsAngleMode.value;
+            angleModeEl.dispatchEvent(new Event('change', { bubbles:true }));
+        }
+    });
+    if (fsSamplingPreset) fsSamplingPreset.addEventListener('change', () => {
+        if (samplingPreset && samplingPreset.value !== fsSamplingPreset.value) {
+            samplingPreset.value = fsSamplingPreset.value;
+            samplingPreset.dispatchEvent(new Event('change', { bubbles:true }));
+        }
+    });
+    if (fsPiAxis) fsPiAxis.addEventListener('change', () => {
+        const piAxisEl = document.getElementById('piAxisCheckbox');
+        if (piAxisEl && piAxisEl.checked !== fsPiAxis.checked) {
+            piAxisEl.checked = fsPiAxis.checked;
+            piAxisEl.dispatchEvent(new Event('change', { bubbles:true }));
+        }
+    });
+    // Main -> FS live sync
+    const angleModeElLive = document.getElementById('angleMode');
+    if (angleModeElLive) angleModeElLive.addEventListener('change', () => { try { syncFsRenderFromMain(); } catch(_) {} });
+    if (samplingPreset) samplingPreset.addEventListener('change', () => { try { syncFsRenderFromMain(); } catch(_) {} });
+    const piAxisElLive = document.getElementById('piAxisCheckbox');
+    if (piAxisElLive) piAxisElLive.addEventListener('change', () => { try { syncFsRenderFromMain(); } catch(_) {} });
+
+    // FS Nawigacja — podłącz do głównych akcji lub zastosuj fallback
+    function fallbackAdjust(action) {
+        if (!myChart) return;
+        const gd = myChart;
+        const xr = (gd.layout && gd.layout.xaxis && gd.layout.xaxis.range) ? gd.layout.xaxis.range.slice() : [parseNumberInput(xMinInput.value), parseNumberInput(xMaxInput.value)];
+        const yr = (gd.layout && gd.layout.yaxis && gd.layout.yaxis.range) ? gd.layout.yaxis.range.slice() : [parseNumberInput(yMinInput.value), parseNumberInput(yMaxInput.value)];
+        const xmid = (xr[0] + xr[1]) / 2;
+        const ymid = (yr[0] + yr[1]) / 2;
+        if (action === 'zoom-in') {
+            const xhalf = (xr[1] - xr[0]) * (1 - ZOOM_FACTOR) / 2;
+            const yhalf = (yr[1] - yr[0]) * (1 - ZOOM_FACTOR) / 2;
+            Plotly.relayout(gd, { 'xaxis.range': [xmid - xhalf, xmid + xhalf], 'yaxis.range': [ymid - yhalf, ymid + yhalf] });
+        } else if (action === 'zoom-out') {
+            const xhalf = (xr[1] - xr[0]) * (1 + ZOOM_FACTOR) / 2;
+            const yhalf = (yr[1] - yr[0]) * (1 + ZOOM_FACTOR) / 2;
+            Plotly.relayout(gd, { 'xaxis.range': [xmid - xhalf, xmid + xhalf], 'yaxis.range': [ymid - yhalf, ymid + yhalf] });
+        } else if (action === 'left') {
+            const shift = (xr[1] - xr[0]) * PAN_FACTOR; Plotly.relayout(gd, { 'xaxis.range': [xr[0] - shift, xr[1] - shift] });
+        } else if (action === 'right') {
+            const shift = (xr[1] - xr[0]) * PAN_FACTOR; Plotly.relayout(gd, { 'xaxis.range': [xr[0] + shift, xr[1] + shift] });
+        } else if (action === 'up') {
+            const shift = (yr[1] - yr[0]) * PAN_FACTOR; Plotly.relayout(gd, { 'yaxis.range': [yr[0] + shift, yr[1] + shift] });
+        } else if (action === 'down') {
+            const shift = (yr[1] - yr[0]) * PAN_FACTOR; Plotly.relayout(gd, { 'yaxis.range': [yr[0] - shift, yr[1] - shift] });
+        }
+    }
+    function bindFsNav(btn, mainId, action) {
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+            const mainBtn = document.getElementById(mainId);
+            if (mainBtn && typeof mainBtn.onclick === 'function') mainBtn.onclick();
+            else fallbackAdjust(action);
+        });
+    }
+    bindFsNav(fsZoomIn, 'zoomIn', 'zoom-in');
+    bindFsNav(fsZoomOut, 'zoomOut', 'zoom-out');
+    bindFsNav(fsPanLeft, 'panLeft', 'left');
+    bindFsNav(fsPanRight, 'panRight', 'right');
+    bindFsNav(fsPanUp, 'panUp', 'up');
+    bindFsNav(fsPanDown, 'panDown', 'down');
+
+    // === Fullscreen Dock: Integrals ===
+    function syncFsIntegralFromMain() {
+        if (!document.fullscreenElement || document.fullscreenElement !== chartContainer) return;
+        if (fsIntA && integralA && fsIntA.value !== integralA.value) fsIntA.value = integralA.value;
+        if (fsIntB && integralB && fsIntB.value !== integralB.value) fsIntB.value = integralB.value;
+    }
+    if (fsIntA && integralA) {
+        fsIntA.addEventListener('input', () => { if (integralA.value !== fsIntA.value) { integralA.value = fsIntA.value; integralA.dispatchEvent(new Event('input', { bubbles:true })); } });
+        fsIntA.addEventListener('change', () => { integralA.dispatchEvent(new Event('change', { bubbles:true })); });
+    }
+    if (fsIntB && integralB) {
+        fsIntB.addEventListener('input', () => { if (integralB.value !== fsIntB.value) { integralB.value = fsIntB.value; integralB.dispatchEvent(new Event('input', { bubbles:true })); } });
+        fsIntB.addEventListener('change', () => { integralB.dispatchEvent(new Event('change', { bubbles:true })); });
+    }
+    if (fsIntegralButton) {
+        fsIntegralButton.addEventListener('click', () => {
+            const btn = document.getElementById('calculateIntegralButton');
+            if (btn) btn.click();
+        });
+    }
+    // Keep FS integrals in sync when main changes
+    if (integralA) integralA.addEventListener('input', () => { try { syncFsIntegralFromMain(); } catch(_) {} });
+    if (integralB) integralB.addEventListener('input', () => { try { syncFsIntegralFromMain(); } catch(_) {} });
+
+    // === Fullscreen Dock: Pole między krzywymi ===
+    function syncFsBetweenFromMain() {
+        const mainA = document.getElementById('betweenA');
+        const mainB = document.getElementById('betweenB');
+        if (!mainA || !mainB) return;
+        if (fsBetweenA && fsBetweenA.value !== mainA.value) fsBetweenA.value = mainA.value;
+        if (fsBetweenB && fsBetweenB.value !== mainB.value) fsBetweenB.value = mainB.value;
+    }
+    if (fsBetweenA) {
+        fsBetweenA.addEventListener('input', () => {
+            const mainA = document.getElementById('betweenA');
+            if (mainA && mainA.value !== fsBetweenA.value) { mainA.value = fsBetweenA.value; mainA.dispatchEvent(new Event('input', { bubbles:true })); }
+        });
+        fsBetweenA.addEventListener('change', () => {
+            const mainA = document.getElementById('betweenA');
+            if (mainA) mainA.dispatchEvent(new Event('change', { bubbles:true }));
+        });
+    }
+    if (fsBetweenB) {
+        fsBetweenB.addEventListener('input', () => {
+            const mainB = document.getElementById('betweenB');
+            if (mainB && mainB.value !== fsBetweenB.value) { mainB.value = fsBetweenB.value; mainB.dispatchEvent(new Event('input', { bubbles:true })); }
+        });
+        fsBetweenB.addEventListener('change', () => {
+            const mainB = document.getElementById('betweenB');
+            if (mainB) mainB.dispatchEvent(new Event('change', { bubbles:true }));
+        });
+    }
+    if (fsBetweenButton) {
+        fsBetweenButton.addEventListener('click', () => {
+            const btn = document.getElementById('calculateBetweenButton');
+            if (btn) btn.click();
+        });
+    }
+    // Main -> FS sync for between controls
+    const mainBetweenA = document.getElementById('betweenA');
+    const mainBetweenB = document.getElementById('betweenB');
+    if (mainBetweenA) mainBetweenA.addEventListener('input', () => { try { syncFsBetweenFromMain(); } catch(_) {} });
+    if (mainBetweenB) mainBetweenB.addEventListener('input', () => { try { syncFsBetweenFromMain(); } catch(_) {} });
+
+    // === Fullscreen Dock: Parameters mirror ===
+    function buildFsParamsUI() {
+        if (!fsParamsContainer) return;
+        const mainContainer = document.getElementById('paramControls');
+        if (!mainContainer) { fsParamsContainer.innerHTML = ''; return; }
+        const sliders = mainContainer.querySelectorAll('input[type="range"][id^="slider-"]');
+        if (!sliders.length) {
+            fsParamsContainer.innerHTML = '<div style="font-size:12px;color:#78909c;">Brak parametrów</div>';
+            return;
+        }
+        const parts = [];
+        sliders.forEach(inp => {
+            const name = inp.id.replace(/^slider-/, '');
+            const val = inp.value;
+            const min = inp.min;
+            const max = inp.max;
+            const step = inp.step;
+            parts.push(`
+                <div class="fs-param" data-name="${name}">
+                    <div class="fs-param-head"><strong>${name}</strong><span class="fs-param-value">${Number(val).toFixed(2)}</span></div>
+                    <input type="range" id="fs-slider-${name}" min="${min}" max="${max}" step="${step}" value="${val}">
+                </div>
+            `);
+        });
+        fsParamsContainer.innerHTML = parts.join('');
+        // Wire events FS -> main
+        fsParamsContainer.querySelectorAll('input[type="range"]').forEach(fsSl => {
+            const name = fsSl.id.replace(/^fs-slider-/, '');
+            const mainSl = document.getElementById(`slider-${name}`);
+            const valueEl = fsSl.parentElement.querySelector('.fs-param-value');
+            fsSl.addEventListener('input', () => {
+                if (valueEl) valueEl.textContent = Number(fsSl.value).toFixed(2);
+                if (mainSl && mainSl.value !== fsSl.value) {
+                    mainSl.value = fsSl.value;
+                    mainSl.dispatchEvent(new Event('input', { bubbles:true }));
+                }
+            });
+            fsSl.addEventListener('change', () => {
+                if (mainSl) mainSl.dispatchEvent(new Event('change', { bubbles:true }));
+            });
+        });
+    }
+    function syncFsParamsFromMain() {
+        if (!fsParamsContainer) return;
+        fsParamsContainer.querySelectorAll('input[type="range"]').forEach(fsSl => {
+            const name = fsSl.id.replace(/^fs-slider-/, '');
+            const mainSl = document.getElementById(`slider-${name}`);
+            if (mainSl) {
+                if (fsSl.min !== mainSl.min) fsSl.min = mainSl.min;
+                if (fsSl.max !== mainSl.max) fsSl.max = mainSl.max;
+                if (fsSl.step !== mainSl.step) fsSl.step = mainSl.step;
+                if (fsSl.value !== mainSl.value) {
+                    fsSl.value = mainSl.value;
+                    const valueEl = fsSl.parentElement.querySelector('.fs-param-value');
+                    if (valueEl) valueEl.textContent = Number(fsSl.value).toFixed(2);
+                }
+            }
+        });
+    }
+    // Observe paramControls for structural changes and value inputs
+    const paramControls = document.getElementById('paramControls');
+    if (paramControls) {
+        const mo = new MutationObserver(() => { if (document.fullscreenElement === chartContainer) { buildFsParamsUI(); syncFsParamsFromMain(); } });
+        mo.observe(paramControls, { childList:true, subtree:true });
+        paramControls.addEventListener('input', (e) => {
+            if (document.fullscreenElement === chartContainer && e.target && e.target.type === 'range') {
+                syncFsParamsFromMain();
+            }
+        });
+    }
+
+    // Analiza: synchronizacja i przełączniki
+    function syncFsAnalysisFromMain() {
+        if (fsZeros) fsZeros.checked = !!document.getElementById('zerosCheckbox')?.checked;
+        if (fsExtrema) fsExtrema.checked = !!document.getElementById('extremaCheckbox')?.checked;
+        if (fsInflections) fsInflections.checked = !!document.getElementById('inflectionsCheckbox')?.checked;
+        if (fsIntersections) fsIntersections.checked = !!document.getElementById('intersectionsCheckbox')?.checked;
+        if (fsDerivative) fsDerivative.checked = !!document.getElementById('derivativePlotCheckbox')?.checked;
+    }
+    function toggleMainCheckbox(id, checked) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (el.checked !== checked) { el.checked = checked; el.dispatchEvent(new Event('change', { bubbles: true })); }
+        // po zmianie uruchom rysowanie, aby przeliczyć analizy (lekko, bo i tak robimy w wątku)
+        const plotButton = document.getElementById('plotButton');
+        if (plotButton) plotButton.click();
+    }
+    [
+        [fsZeros, 'zerosCheckbox'],
+        [fsExtrema, 'extremaCheckbox'],
+        [fsInflections, 'inflectionsCheckbox'],
+        [fsIntersections, 'intersectionsCheckbox'],
+        [fsDerivative, 'derivativePlotCheckbox']
+    ].forEach(([el, id]) => {
+        if (el) el.addEventListener('change', () => toggleMainCheckbox(id, el.checked));
+    });
 
     // Śledź ostatnio aktywne pole wprowadzania
     let lastActiveInput = null;
@@ -376,6 +1176,12 @@ document.addEventListener('DOMContentLoaded', () => {
             clearAllAnalysisData();
             // Trigger replot to clear visualization
             if (plotButton) plotButton.click();
+            // If we are in fullscreen, rebuild fs inputs for the new mode
+            if (document.fullscreenElement === chartContainer) {
+                try { buildFsInputsUI(); syncFsInputsFromMain(); syncFsIntegralFromMain(); syncFsBetweenFromMain(); buildFsParamsUI(); syncFsParamsFromMain(); syncFsRenderFromMain(); syncFsModeFromMain(); updateFsDockModeVisibility(); } catch(_) {}
+            }
+            // Update FS plot mode selector/helper if present (even outside fullscreen)
+            try { syncFsModeFromMain(); updateFsDockModeVisibility(); } catch(_) {}
         });
         // Inicjalizacja przy załadowaniu
         updateModeUI(plotMode.value);
@@ -641,9 +1447,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to display analysis results
     function displayAnalysisResults() {
-        if (!analysisResults || !analysisResultsContent) return;
         const insightsToggle = document.getElementById('insightsToggle');
-        
+        const fsAnalysisEl = document.getElementById('fsAnalysisResultsContent');
     const { zeros, extrema, inflections, integral, intersections, derivative } = currentAnalysisData;
         const parts = [];
         
@@ -740,8 +1545,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         const placeholder = '<div style="color:#6c757d;font-size:13px;">Brak wyników analizy. Włącz opcje w panelu „Analiza” i narysuj wykres.</div>';
-        analysisResultsContent.innerHTML = parts.length > 0 ? parts.join('') : placeholder;
-        analysisResults.style.display = 'block';
+        const htmlOut = parts.length > 0 ? parts.join('') : placeholder;
+        if (analysisResultsContent) analysisResultsContent.innerHTML = htmlOut;
+        if (fsAnalysisEl) {
+            fsAnalysisEl.innerHTML = htmlOut;
+        }
+        if (analysisResults) analysisResults.style.display = 'block';
         if (insightsToggle) { insightsToggle.style.display = 'block'; }
     }
 
@@ -1104,12 +1913,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             Plotly.newPlot(plotDiv, traces, layout, config).then(gd => {
                 myChart = gd;
+                // zainicjalizuj HUD zakresów
+                updateFsRangeFromLayout(gd.layout);
+                // zsynchronizuj lewy panel gdyby fullscreen był już aktywny
+                syncFsControlsFromLayout(gd.layout);
+                // jeżeli jesteśmy już w fullscreen, natychmiast zastosuj wygląd z panelu
+                if (document.fullscreenElement === chartContainer) { try { applyFsControls(); } catch(_) {} }
+                // zsynchronizuj i odśwież pola wejściowe w docku
+                if (document.fullscreenElement === chartContainer) { try { buildFsInputsUI(); syncFsInputsFromMain(); syncFsIntegralFromMain(); syncFsBetweenFromMain(); buildFsParamsUI(); syncFsParamsFromMain(); updateFsDockModeVisibility(); } catch(_) {} }
 
                 // update inputs/localStorage after pan/zoom
                 plotDiv.on('plotly_relayout', () => {
                     try {
                         const xRange = gd.layout.xaxis.range || [xMin, xMax];
                         const yRange = gd.layout.yaxis.range || [yMin, yMax];
+                        updateFsRangeFromLayout(gd.layout);
                         const newRanges = {
                             xMin: roundRange(validateRange(xRange[0])),
                             xMax: roundRange(validateRange(xRange[1])),
@@ -1123,6 +1941,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         yMinInput.value = newRanges.yMin;
                         yMaxInput.value = newRanges.yMax;
                         localStorage.setItem('chartRanges', JSON.stringify(newRanges));
+                        // Jeśli fullscreen, zaktualizuj pola zakresu w docku
+                        try { syncFsInputsFromMain(); } catch(_) {}
                     } catch (e) { console.warn('Błąd podczas aktualizacji zakresów:', e); }
                 });
 
@@ -1460,6 +2280,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (analysisResultsContent) {
             analysisResultsContent.innerHTML = '<div style="color:#6c757d;font-size:13px;">Brak wyników analizy.</div>';
         }
+        const fsAnalysisEl = document.getElementById('fsAnalysisResultsContent');
+        if (fsAnalysisEl) {
+            fsAnalysisEl.innerHTML = '<div style="color:#6c757d;font-size:12px;">Brak wyników analizy.</div>';
+        }
         if (analysisResults) {
             analysisResults.style.display = 'block';
         }
@@ -1544,15 +2368,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Obsługa przycisku reset widoku
+    // Obsługa przycisku reset widoku: czyści analizy i ustawia zakresy -10..10
     resetViewButton.addEventListener('click', () => {
-        // Reset both X and Y ranges to defaults and re-plot
-        xMinInput.value = -10;
-        xMaxInput.value = 10;
-        yMinInput.value = -10;
-        yMaxInput.value = 10;
-        plotButton.click();
+        resetPlotViewAndAnalysis();
     });
+
+    // Wspólna funkcja Reset: czyści analizy i ustawia domyślne zakresy, rysuje tylko funkcje
+    function resetPlotViewAndAnalysis() {
+        try {
+            // Ustaw domyślne zakresy X/Y
+            xMinInput.value = -10;
+            xMaxInput.value = 10;
+            yMinInput.value = -10;
+            yMaxInput.value = 10;
+
+            // Wyczyść wszystkie wizualizacje analizy i dane
+            clearAllAnalysisData();
+
+            // Odznacz przełączniki analizy (główne)
+            const zerosCheck = document.getElementById('zerosCheckbox');
+            const extremaCheck = document.getElementById('extremaCheckbox');
+            const intersectionsCheck = document.getElementById('intersectionsCheckbox');
+            const derivativeCheck = document.getElementById('derivativePlotCheckbox');
+            const inflectionsCheck = document.getElementById('inflectionsCheckbox');
+            if (zerosCheck) zerosCheck.checked = false;
+            if (extremaCheck) extremaCheck.checked = false;
+            if (intersectionsCheck) intersectionsCheck.checked = false;
+            if (derivativeCheck) derivativeCheck.checked = false;
+            if (inflectionsCheck) inflectionsCheck.checked = false;
+            // (label toggle removed)
+
+            // Zsynchronizuj przełączniki w panelu fullscreen (jeśli aktywny)
+            try { syncFsAnalysisFromMain(); } catch(_) {}
+
+            // Usuń komunikaty o błędach
+            errorDisplay.textContent = '';
+
+            // Przerysuj
+            plotButton.click();
+
+            // Jeśli jesteśmy w fullscreen – zaktualizuj HUD zakresów po chwili
+            if (document.fullscreenElement === chartContainer && myChart) {
+                setTimeout(() => { try { updateFsRangeFromLayout(myChart.layout); } catch(_) {} }, 120);
+            }
+        } catch (_) {}
+    }
 
     // Obsługa przycisku czyszczenia analiz
     if (clearAnalysisButton) {
@@ -1572,14 +2432,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const intersectionsCheck = document.getElementById('intersectionsCheckbox');
             const derivativeCheck = document.getElementById('derivativePlotCheckbox');
             const inflectionsCheck = document.getElementById('inflectionsCheckbox');
-            const integralLabelCheck = document.getElementById('showIntegralLabel');
             
             if (zerosCheck) zerosCheck.checked = false;
             if (extremaCheck) extremaCheck.checked = false;
             if (intersectionsCheck) intersectionsCheck.checked = false;
             if (derivativeCheck) derivativeCheck.checked = false;
             if (inflectionsCheck) inflectionsCheck.checked = false;
-            if (integralLabelCheck) integralLabelCheck.checked = false;
+            // label checkbox removed
             
             // Reset integral bounds to defaults
             if (integralA) integralA.value = '0';
@@ -1676,27 +2535,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Show integral value label toggle - refresh when changed
-    const showIntegralLabel = document.getElementById('showIntegralLabel');
-    if (showIntegralLabel) {
-        showIntegralLabel.addEventListener('change', () => {
-            // Rebuild current visualization if any
-            const modeEl = document.getElementById('plotMode');
-            const mode = (modeEl && modeEl.value) || 'cartesian';
-            if (currentAnalysisData.integral) {
-                if (mode === 'cartesian' && currentAnalysisData.integral.a != null && currentAnalysisData.integral.b != null) {
-                    // rebuild cartesian shading to include/exclude label (value is added in annotations later)
-                    const expression = functionInput.value;
-                    createIntegralShading(expression, currentAnalysisData.integral.a, currentAnalysisData.integral.b);
-                } else {
-                    // For polar/parametric, just trigger a replot so label is applied via traces
-                    plotButton.click();
-                }
-            } else {
-                plotButton.click();
-            }
-        });
-    }
+    // Removed "Pokaż wartość całki" toggle and related logic
 
     // Calculate area between curves (cartesian only)
     if (calculateBetweenButton && calcWorker) {
@@ -2284,28 +3123,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 hoverinfo: 'skip'
             };
 
-            // Optional label marker inside wedge if enabled
-            const showLabelEl = document.getElementById('showIntegralLabel');
-            const showLabel = showLabelEl ? showLabelEl.checked : false;
-            const extraTraces = [wedgeTrace];
-            if (showLabel && currentAnalysisData.integral && Number.isFinite(currentAnalysisData.integral.value)) {
-                const mid = (aRad + bRad) / 2;
-                // find a reasonable radius for label (half of max r in the wedge)
-                const maxR = r.reduce((m, v) => (isFinite(v) && v > m ? v : m), 0);
-                const labelR = maxR * 0.5;
-                extraTraces.push({
-                    type: 'scatterpolar',
-                    theta: [(mid * 180) / Math.PI],
-                    r: [labelR],
-                    mode: 'text',
-                    text: [`∫ = ${Number(currentAnalysisData.integral.value).toFixed(4)}`],
-                    textposition: 'middle center',
-                    textfont: { size: 12, color: '#2c3e50' },
-                    showlegend: false,
-                });
-            }
-
-            currentPolarIntegralTraces = extraTraces;
+            currentPolarIntegralTraces = [wedgeTrace];
             // Redraw plot with wedge shading
             plotButton.click();
         } catch (err) {
@@ -2343,23 +3161,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 showlegend: false,
                 connectgaps: false
             };
-
-            // Optional label at mid-point if enabled
-            const showLabelEl = document.getElementById('showIntegralLabel');
-            const showLabel = showLabelEl ? showLabelEl.checked : false;
-            if (showLabel && currentAnalysisData.integral && Number.isFinite(currentAnalysisData.integral.value)) {
-                const tMid = (aRad + bRad) / 2;
-                let xm = null, ym = null;
-                try { xm = nodeX.compile().evaluate(Object.assign({ t: tMid }, scope)); } catch (e) { }
-                try { ym = nodeY.compile().evaluate(Object.assign({ t: tMid }, scope)); } catch (e) { }
-                if (isFinite(xm) && isFinite(ym)) {
-                    // Add small text marker as a separate trace
-                    currentParametricHighlightTrace.text = [`∫ = ${Number(currentAnalysisData.integral.value).toFixed(4)}`];
-                    currentParametricHighlightTrace.mode = 'lines+text';
-                    currentParametricHighlightTrace.textposition = 'top center';
-                    currentParametricHighlightTrace.textfont = { size: 12, color: '#2c3e50' };
-                }
-            }
 
             plotButton.click();
         } catch (err) {
@@ -2845,15 +3646,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Render history list
     function renderHistoryList() {
-        if (!historyList) {
-            console.warn('historyList element not found!');
+        const fsHistoryListEl = document.getElementById('fsHistoryList');
+        if (!historyList && !fsHistoryListEl) {
+            console.warn('historyList elements not found!');
             return;
         }
         
         console.log('Rendering history, items:', plotHistory.length);
         
         if (plotHistory.length === 0) {
-            historyList.innerHTML = '<div style="text-align:center;color:#999;font-size:11px;padding:10px;">Brak historii</div>';
+            if (historyList) historyList.innerHTML = '<div style="text-align:center;color:#999;font-size:11px;padding:10px;">Brak historii</div>';
+            if (fsHistoryListEl) fsHistoryListEl.innerHTML = '<div style="text-align:center;color:#999;font-size:11px;padding:10px;">Brak historii</div>';
             return;
         }
         
@@ -2881,38 +3684,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
         
         console.log('Final HTML:', htmlContent);
-        historyList.innerHTML = htmlContent;
+        if (historyList) historyList.innerHTML = htmlContent;
+        if (fsHistoryListEl) fsHistoryListEl.innerHTML = htmlContent;
         
         // Add click listeners to restore
-        historyList.querySelectorAll('.history-item').forEach(item => {
-            const id = parseInt(item.dataset.id);
-            item.addEventListener('click', (e) => {
-                if (e.target.classList.contains('history-delete')) return;
-                const snap = plotHistory.find(s => s.id === id);
-                if (snap) restoreSnapshot(snap);
+        const bindListEvents = (container) => {
+            if (!container) return;
+            container.querySelectorAll('.history-item').forEach(item => {
+                const id = parseInt(item.dataset.id);
+                item.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('history-delete')) return;
+                    const snap = plotHistory.find(s => s.id === id);
+                    if (snap) restoreSnapshot(snap);
+                });
             });
-        });
-        
-        // Add delete listeners
-        historyList.querySelectorAll('.history-delete').forEach(btn => {
-            const id = parseInt(btn.dataset.id);
-            btn.addEventListener('click', () => {
-                plotHistory = plotHistory.filter(s => s.id !== id);
-                saveHistory();
-                renderHistoryList();
+            container.querySelectorAll('.history-delete').forEach(btn => {
+                const id = parseInt(btn.dataset.id);
+                btn.addEventListener('click', () => {
+                    plotHistory = plotHistory.filter(s => s.id !== id);
+                    saveHistory();
+                    renderHistoryList();
+                });
             });
-        });
+        };
+        bindListEvents(historyList);
+        bindListEvents(fsHistoryListEl);
     }
 
     // Clear history button
+    function clearHistoryAction() {
+        if (confirm('Czy na pewno chcesz wyczyścić całą historię?')) {
+            plotHistory = [];
+            saveHistory();
+            renderHistoryList();
+        }
+    }
     if (clearHistoryButton) {
-        clearHistoryButton.addEventListener('click', () => {
-            if (confirm('Czy na pewno chcesz wyczyścić całą historię?')) {
-                plotHistory = [];
-                saveHistory();
-                renderHistoryList();
-            }
-        });
+        clearHistoryButton.addEventListener('click', clearHistoryAction);
+    }
+    if (fsClearHistoryButton) {
+        fsClearHistoryButton.addEventListener('click', clearHistoryAction);
     }
 
     // Load history on startup

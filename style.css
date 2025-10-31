@@ -486,6 +486,140 @@ input::placeholder {
     background: #fff;
 }
 
+/* Fullscreen HUD: widoczny tylko w pełnym ekranie */
+.fs-hud { display: none !important; }
+
+/* Lewy panel sterowania w fullscreen */
+.fs-controls { display: none !important; }
+
+/* Prawy dolny panel analizy w fullscreen */
+.fs-analysis { display: none !important; }
+
+/* Ruchomy panel fullscreen */
+.fs-dock { display:none; }
+#chartContainer:fullscreen .fs-dock,
+#chartContainer:-webkit-full-screen .fs-dock {
+    display: block;
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    width: 300px;
+    max-height: 75vh;
+    overflow: auto;
+    background: rgba(255,255,255,0.96);
+    border: 1px solid #90caf9;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    z-index: 80;
+    backdrop-filter: blur(2px);
+}
+.fs-dock-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: linear-gradient(135deg,#e3f2fd 0%, #bbdefb 100%);
+    border-bottom: 1px solid #90caf9;
+    cursor: move;
+    user-select: none;
+}
+.fs-dock-toggle {
+    margin-left: auto;
+    cursor: pointer;
+    border: 1px solid #90caf9;
+    background: #fff;
+    color: #0d47a1;
+    border-radius: 6px;
+    padding: 2px 8px;
+}
+.fs-dock.collapsed .fs-dock-body { display: none; }
+.fs-dock.collapsed #fsDockToggle { transform: rotate(-90deg); }
+.fs-dock-title { position: relative; cursor: pointer; }
+.fs-dock-section .fs-dock-title::after {
+    content: '▾';
+    position: absolute;
+    right: 2px;
+    top: 0;
+    color: #90a4ae;
+    font-size: 12px;
+}
+.fs-dock-section.collapsed .fs-dock-title::after { transform: rotate(-90deg); }
+.fs-dock-section.collapsed > *:not(.fs-dock-title) { display: none !important; }
+.fs-dock-body { padding: 10px; }
+.fs-dock-section { margin-bottom: 10px; }
+.fs-dock-title { font-weight: 700; color:#1976d2; margin-bottom:6px; }
+.fs-grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+.fs-grid-2 label { display:flex; align-items:center; gap:6px; white-space: nowrap; }
+.fs-dock .fs-slider { display:flex; align-items:center; gap:8px; }
+.fs-dock .fs-slider input[type="range"] { width: 160px; }
+.fs-dock .fs-actions button {
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid #90caf9;
+    background: linear-gradient(135deg,#e3f2fd 0%,#bbdefb 100%);
+    color:#0d47a1;
+    cursor: pointer;
+}
+.fs-dock .fs-actions button:hover { background:#e1f0ff; }
+
+/* Fullscreen dock: navigation grid */
+.fs-nav { display:grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.fs-nav button {
+    width: 100%;
+    height: 30px;
+    padding: 0;
+    font-size: 14px;
+    background: white;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    border-radius: 6px;
+}
+
+/* Fullscreen dock: inputs for formulas and ranges */
+.fs-inputs { display: grid; gap: 8px; }
+.fs-inputs .fs-row { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.fs-inputs .fs-grid-2col { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fs-inputs .fs-grid-4col { display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.fs-inputs label { font-size: 12px; color:#37474f; display:block; margin-bottom: 3px; }
+.fs-inputs input[type="text"],
+.fs-inputs input[type="number"] { width: 100%; padding: 6px 8px; border: 1px solid #ced4da; border-radius: 6px; font-size: 13px; box-sizing: border-box; }
+.fs-inputs .hint { font-size: 11px; color:#78909c; }
+
+/* Fullscreen dock: parameter sliders */
+.fs-params { display: grid; gap: 8px; }
+.fs-param { background:#f8f9fa; border:1px solid #e0e0e0; border-radius:6px; padding:8px; }
+.fs-param .fs-param-head { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#37474f; margin-bottom:6px; }
+.fs-param .fs-param-head strong { color:#1976d2; }
+.fs-param input[type="range"] { -webkit-appearance:none; appearance:none; width:100%; height:8px; background:linear-gradient(to right,#e3f2fd 0%,#90caf9 100%); border-radius:4px; outline:none; }
+.fs-param input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:16px; height:16px; background:linear-gradient(135deg,#4a90e2 0%,#357abd 100%); border:2px solid #fff; border-radius:50%; box-shadow:0 2px 6px rgba(74,144,226,0.4); cursor:pointer; }
+.fs-param input[type="range"]::-moz-range-thumb { width:16px; height:16px; background:linear-gradient(135deg,#4a90e2 0%,#357abd 100%); border:2px solid #fff; border-radius:50%; box-shadow:0 2px 6px rgba(74,144,226,0.4); cursor:pointer; }
+
+/* Fullscreen dock: analysis and history scroll areas */
+.fs-analysis-content {
+    max-height: 240px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px; /* avoid content behind scrollbar */
+}
+.fs-history-list {
+    max-height: 220px;
+    overflow-y: auto;
+}
+/* Subtle custom scrollbars (WebKit) */
+.fs-analysis-content::-webkit-scrollbar,
+.fs-history-list::-webkit-scrollbar {
+    width: 8px;
+}
+.fs-analysis-content::-webkit-scrollbar-thumb,
+.fs-history-list::-webkit-scrollbar-thumb {
+    background: #cfd8dc;
+    border-radius: 6px;
+}
+.fs-analysis-content::-webkit-scrollbar-thumb:hover,
+.fs-history-list::-webkit-scrollbar-thumb:hover {
+    background: #b0bec5;
+}
 .range-inputs {
     background: #f8f9fa;
     padding: 15px;
@@ -665,6 +799,23 @@ button:active {
     margin-left: 0;   /* align with sidebar (left) */
     margin-right: auto;
 }
+
+/* =====================
+   Theme: deflatul (light, bluish)
+   ===================== */
+.theme-deflatul .calculator-container { background: #eef3f8; }
+.theme-deflatul .ui-group { background: linear-gradient(135deg,#f6f9fd 0%, #eef3f8 100%); border-color: #c7d2e3; }
+.theme-deflatul .ui-group:hover { border-color: #6ea6e7; }
+.theme-deflatul .ui-group legend { border-color: #b7c4d6; color: #2b3b55; }
+.theme-deflatul .function-field { background:#f2f6fb; border-color:#cbd7e6; }
+.theme-deflatul .navigation-controls { background:#f2f6fb; }
+.theme-deflatul #myChart { border-color: #b8c7da; }
+.theme-deflatul #plotButton { background: linear-gradient(135deg, #5aa0ff 0%, #3e7bd9 100%); }
+.theme-deflatul #plotButton:hover { background: linear-gradient(135deg, #6aabff 0%, #4b87e4 100%); }
+.theme-deflatul #chartContainer:fullscreen .fs-dock,
+.theme-deflatul #chartContainer:-webkit-full-screen .fs-dock { border-color:#9db8da; }
+.theme-deflatul .fs-dock-header { background: linear-gradient(135deg,#d8e6f7 0%, #c6daef 100%); border-bottom-color:#9db8da; }
+.theme-deflatul .fs-dock .fs-actions button { background: linear-gradient(135deg,#e7f0ff 0%, #d7e7fb 100%); border-color:#9db8da; color:#1f3d6d; }
 
 details {
     background: #f8f9fa;
