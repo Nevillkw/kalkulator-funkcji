@@ -512,7 +512,8 @@
                         <div id="analysisResults" class="analysis-results">
                             <h4>📋 Wyniki analizy</h4>
                             <div class="analysis-controls">
-                                <button id="analysisExpand" class="analysis-expand" title="Rozwiń analizę">⛶ Pełny ekran</button>
+                                <button id="copyAnalysis" title="Skopiuj wyniki analizy">📄 Kopiuj</button>
+                                <button id="openAnalysisModal" title="Pokaż w oknie na środku">🪟 Otwórz w oknie</button>
                             </div>
                             <div id="analysisResultsContent"></div>
                         </div>
@@ -656,5 +657,21 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <script src="script.js?v=20251031"></script>
+    
+    <!-- Modal: wyniki analizy (zawsze wycentrowane) -->
+    <div id="analysisModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analysisModalTitle">
+            <div class="modal-header">
+                <h4 id="analysisModalTitle">📋 Wyniki analizy</h4>
+                <div class="modal-actions">
+                    <button id="modalCopyAnalysis" title="Skopiuj wyniki">📄 Kopiuj</button>
+                    <button id="modalCloseAnalysis" title="Zamknij okno" aria-label="Zamknij">✕</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="analysisModalContent" class="modal-content"></div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

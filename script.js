@@ -30,6 +30,7 @@ function isInIframe() {
 function postFrameHeight(trigger) {
     // Debounced to avoid spamming parent
     if (!postFrameHeight._t) postFrameHeight._t = null;
+    if (typeof postFrameHeight._lastSentAt === 'undefined') postFrameHeight._lastSentAt = 0;
     if (!isInIframe()) return; // only when embedded
     clearTimeout(postFrameHeight._t);
     postFrameHeight._t = setTimeout(() => {
@@ -42,9 +43,13 @@ function postFrameHeight(trigger) {
             );
             // Dedupe: only send if height changed meaningfully
             if (typeof postFrameHeight._last === 'number') {
-                if (Math.abs(h - postFrameHeight._last) < 12) return;
+                if (Math.abs(h - postFrameHeight._last) < 24) return;
             }
+            // Throttle: ensure a minimum interval between posts
+            const now = Date.now();
+            if (now - postFrameHeight._lastSentAt < 200) return;
             postFrameHeight._last = h;
+            postFrameHeight._lastSentAt = now;
             // Send message to parent; parent may filter origin
             parent.postMessage({ type: 'kalkulator-funkcji/height', height: h, trigger: trigger || '' }, '*');
         } catch (_) {}
@@ -74,6 +79,36 @@ try {
         setTimeout(() => postFrameHeight('init-timeout'), 150);
     }
 } catch(_) {}
+
+// Helper: guarded Plotly resize to avoid jitter from tiny container changes
+// Uses debounce and size threshold to prevent frequent/insignificant relayouts.
+const _plotlyResize = {
+    timer: null,
+    lastW: 0,
+    lastH: 0,
+    threshold: 10, // pixels
+    delay: 80
+};
+function safePlotResize(targetEl) {
+    try {
+        if (!targetEl) targetEl = document.getElementById('myChart');
+        if (!targetEl || typeof Plotly === 'undefined' || !Plotly.Plots || !Plotly.Plots.resize) return;
+        clearTimeout(_plotlyResize.timer);
+        _plotlyResize.timer = setTimeout(() => {
+            try {
+                const rect = targetEl.getBoundingClientRect();
+                const w = Math.round(rect.width);
+                const h = Math.round(rect.height);
+                if (Math.abs(w - _plotlyResize.lastW) < _plotlyResize.threshold && Math.abs(h - _plotlyResize.lastH) < _plotlyResize.threshold) {
+                    // skip insignificant resize
+                    return;
+                }
+                _plotlyResize.lastW = w; _plotlyResize.lastH = h;
+                Plotly.Plots.resize(targetEl);
+            } catch (_) { /* ignore */ }
+        }, _plotlyResize.delay);
+    } catch(_) {}
+}
 
 // Funkcja do renderowania wykresu 3D
 function handle3DPlot(data) {
@@ -210,7 +245,7 @@ function handle3DPlot(data) {
                 } else if (chartContainerEl && chartContainerEl.requestFullscreen) {
                     chartContainerEl.requestFullscreen();
                 }
-                setTimeout(() => { try { const div = document.getElementById('myChart'); if (div) Plotly.Plots.resize(div); } catch(_) {} }, 100);
+                setTimeout(() => { try { const div = document.getElementById('myChart'); if (div) safePlotResize(div); } catch(_) {} }, 100);
             } catch (_) {}
         }
     };
@@ -331,6 +366,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const analysisResults = document.getElementById('analysisResults');
     const analysisResultsContent = document.getElementById('analysisResultsContent');
+    const copyAnalysisBtn = document.getElementById('copyAnalysis');
+    const openAnalysisModalBtn = document.getElementById('openAnalysisModal');
+    const analysisModal = document.getElementById('analysisModal');
+    const analysisModalContent = document.getElementById('analysisModalContent');
+    const modalCopyAnalysisBtn = document.getElementById('modalCopyAnalysis');
+    const modalCloseAnalysisBtn = document.getElementById('modalCloseAnalysis');
     const dataInput = document.getElementById('dataInput');
     const dataURL = document.getElementById('dataURL');
     const loadDataButton = document.getElementById('loadDataButton');
@@ -342,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const insightsToggle = document.getElementById('insightsToggle');
     const resultsToggle = document.getElementById('resultsToggle');
     const calculatorResults = document.getElementById('calculatorResults');
-    const analysisExpand = document.getElementById('analysisExpand');
+    // Removed: analysisExpand (fullscreen modal) per user request
     const chartContainer = document.getElementById('chartContainer');
     // Theme toggle (deflatul)
     const deflatulToggle = document.getElementById('deflatulThemeToggle');
@@ -518,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (chartDiv && window.Plotly) {
                 setTimeout(() => {
                     try {
-                        window.Plotly.Plots.resize(chartDiv);
+                        safePlotResize(chartDiv);
                         // Dostosuj marginesy wykresu do aktualnego układu
                         const mobile = isResponsiveLayout();
                         const newLayout = {
@@ -590,42 +631,71 @@ document.addEventListener('DOMContentLoaded', () => {
             // Trigger resize to update chart if needed
             setTimeout(() => {
                 if (window.Plotly && document.getElementById('myChart')) {
-                    window.Plotly.Plots.resize(document.getElementById('myChart'));
+                    safePlotResize(document.getElementById('myChart'));
                 }
                 try { postFrameHeight('results-toggle'); } catch(_) {}
             }, 350);
         });
     }
 
-    // Analysis expand functionality
-    if (analysisExpand && analysisResults) {
-        analysisExpand.addEventListener('click', () => {
-            const isExpanded = analysisResults.classList.contains('expanded');
-            
-            if (isExpanded) {
-                // Collapse
-                analysisResults.classList.remove('expanded');
-                analysisExpand.innerHTML = '⛶';
-                analysisExpand.title = 'Rozwiń analizę';
+    // Copy analysis to clipboard helper
+    async function copyAnalysisFrom(element) {
+        try {
+            if (!element) return;
+            const text = element.innerText || element.textContent || '';
+            if (!text.trim()) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
             } else {
-                // Expand
-                analysisResults.classList.add('expanded');
-                analysisExpand.innerHTML = '✕';
-                analysisExpand.title = 'Zamknij pełny ekran';
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.top = '-1000px';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
             }
-            try { postFrameHeight('analysis-expand-toggle'); } catch(_) {}
-        });
+        } catch (_) { /* ignore */ }
+    }
 
-        // Close on Escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && analysisResults.classList.contains('expanded')) {
-                analysisResults.classList.remove('expanded');
-                analysisExpand.innerHTML = '⛶';
-                analysisExpand.title = 'Rozwiń analizę';
-                try { postFrameHeight('analysis-escape'); } catch(_) {}
-            }
+    // Bind copy buttons
+    if (copyAnalysisBtn && analysisResultsContent) {
+        copyAnalysisBtn.addEventListener('click', () => copyAnalysisFrom(analysisResultsContent));
+    }
+    if (modalCopyAnalysisBtn && analysisModalContent) {
+        modalCopyAnalysisBtn.addEventListener('click', () => copyAnalysisFrom(analysisModalContent));
+    }
+
+    // Modal open/close helpers
+    function openAnalysisModal() {
+        if (!analysisModal || !analysisModalContent) return;
+        // Clone current analysis HTML into modal
+        try { analysisModalContent.innerHTML = analysisResultsContent ? analysisResultsContent.innerHTML : ''; } catch (_) {}
+        analysisModal.style.display = 'block';
+        analysisModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        try { postFrameHeight('analysis-modal-open'); } catch(_) {}
+    }
+    function closeAnalysisModal() {
+        if (!analysisModal) return;
+        analysisModal.style.display = 'none';
+        analysisModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        try { postFrameHeight('analysis-modal-close'); } catch(_) {}
+    }
+    if (openAnalysisModalBtn) openAnalysisModalBtn.addEventListener('click', openAnalysisModal);
+    if (modalCloseAnalysisBtn) modalCloseAnalysisBtn.addEventListener('click', closeAnalysisModal);
+    if (analysisModal) {
+        // Click outside dialog closes
+        analysisModal.addEventListener('click', (e) => {
+            const dlg = e.target && (e.target.closest ? e.target.closest('.modal-dialog') : null);
+            if (!dlg) closeAnalysisModal();
         });
     }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAnalysisModal();
+    });
 
     // 2) Motyw: deflatul (globalny)
     const THEMES = {
@@ -753,7 +823,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         document.addEventListener('fullscreenchange', () => {
-            try { if (window.Plotly && plotDiv) Plotly.Plots.resize(plotDiv); } catch(_) {}
+                try { if (window.Plotly && plotDiv) safePlotResize(plotDiv); } catch(_) {}
             // odśwież zakres w HUD po zmianie stanu pełnego ekranu
             try { if (myChart) updateFsRangeFromLayout(myChart.layout); } catch(_) {}
             // zsynchronizuj lewy panel z bieżącym layoutem
@@ -2122,6 +2192,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (analysisResults) analysisResults.style.display = 'block';
         if (insightsToggle) { insightsToggle.style.display = 'block'; }
+        // If modal is open, keep it in sync
+        try {
+            const modal = document.getElementById('analysisModal');
+            const modalVisible = modal && modal.style.display !== 'none' && modal.getAttribute('aria-hidden') === 'false';
+            if (modalVisible) {
+                const modalContentEl = document.getElementById('analysisModalContent');
+                if (modalContentEl) modalContentEl.innerHTML = htmlOut;
+            }
+        } catch(_) {}
     }
 
     // Render function: builds traces and plots based on worker result
@@ -2502,7 +2581,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else if (chartContainer && chartContainer.requestFullscreen) {
                             chartContainer.requestFullscreen();
                         }
-                        setTimeout(() => { try { Plotly.Plots.resize(plotDiv); } catch(_) {} }, 100);
+                        setTimeout(() => { try { safePlotResize(plotDiv); } catch(_) {} }, 100);
                     } catch (_) {}
                 }
             };
