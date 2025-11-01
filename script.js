@@ -79,11 +79,14 @@ function handle3DPlot(data) {
         traces.push(loadedData3DTrace);
     }
 
+    // Check if mobile device (small screen)
+    const isMobile = window.innerWidth <= 768;
+    
     const layout = {
         title: { text: 'Wykres powierzchni 3D', font: { size: 18, weight: 600 } },
         scene: {
             xaxis: { 
-                title: { text: 'X', font: { size: 14, weight: 600 } },
+                title: null,
                 gridcolor: t3.grid,
                 gridwidth: 2,
                 linecolor: t3.axis,
@@ -91,7 +94,7 @@ function handle3DPlot(data) {
                 zerolinecolor: t3.zeroline
             },
             yaxis: { 
-                title: { text: 'Y', font: { size: 14, weight: 600 } },
+                title: null,
                 gridcolor: t3.grid,
                 gridwidth: 2,
                 linecolor: t3.axis,
@@ -99,7 +102,7 @@ function handle3DPlot(data) {
                 zerolinecolor: t3.zeroline
             },
             zaxis: { 
-                title: { text: 'Z', font: { size: 14, weight: 600 } },
+                title: null,
                 gridcolor: t3.grid,
                 gridwidth: 2,
                 linecolor: t3.axis,
@@ -113,7 +116,7 @@ function handle3DPlot(data) {
             bgcolor: t3.plot
         },
         autosize: true,
-        margin: { l: 0, r: 0, b: 0, t: 50 },
+        margin: { l: 0, r: 0, b: 0, t: 20 },
         paper_bgcolor: t3.paper,
         plot_bgcolor: t3.plot,
         font: { color: t3.font }
@@ -393,8 +396,54 @@ document.addEventListener('DOMContentLoaded', () => {
             resizer.addEventListener('touchstart', startDrag, {passive:false});
         }
 
+        // Function to update axis titles - always hide them
+        function updateAxisTitles() {
+            if (myChart && myChart.layout) {
+                const isMobile = window.innerWidth <= 768;
+                const updates = {};
+                
+                // Hide all axis titles for maximum chart space
+                if (myChart.layout.xaxis) {
+                    updates['xaxis.title'] = null;
+                }
+                if (myChart.layout.yaxis) {
+                    updates['yaxis.title'] = null;
+                }
+                
+                // Hide 3D plot axis titles  
+                if (myChart.layout.scene) {
+                    if (myChart.layout.scene.xaxis) {
+                        updates['scene.xaxis.title'] = null;
+                    }
+                    if (myChart.layout.scene.yaxis) {
+                        updates['scene.yaxis.title'] = null;
+                    }
+                    if (myChart.layout.scene.zaxis) {
+                        updates['scene.zaxis.title'] = null;
+                    }
+                }
+                
+                // Update margins - use minimal margins for all screen sizes
+                updates['margin'] = myChart.layout.scene ? 
+                    { l: 0, r: 0, b: 0, t: 20 } : 
+                    { t: 20, l: 20, r: 10, b: 30 };
+                
+                if (Object.keys(updates).length > 0) {
+                    try {
+                        Plotly.relayout(myChart, updates);
+                    } catch (e) {
+                        console.warn('Could not update axis titles:', e);
+                    }
+                }
+            }
+        }
+
         // Aktualizuj po zmianach układu
-        ['load','resize'].forEach(evt => window.addEventListener(evt, () => { applyStoredInsightsHeight(); updateSidebarMaxHeight(); }));
+        ['load','resize'].forEach(evt => window.addEventListener(evt, () => { 
+            applyStoredInsightsHeight(); 
+            updateSidebarMaxHeight(); 
+            updateAxisTitles(); 
+        }));
         if (insightsDetails) {
             insightsDetails.addEventListener('toggle', () => { applyStoredInsightsHeight(); updateSidebarMaxHeight(); });
         }
@@ -817,18 +866,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const curX = (gd.layout.xaxis && gd.layout.xaxis.range) ? gd.layout.xaxis.range.slice() : null;
             const curY = (gd.layout.yaxis && gd.layout.yaxis.range) ? gd.layout.yaxis.range.slice() : null;
             if (!curX || !curY) return;
-            // Marginesy, aby znaczniki nie były obcięte
-            const padX = Math.max( (maxX - minX) * 0.06, 0.5 );
-            const padY = Math.max( (maxY - minY) * 0.10, 0.5 );
-            const needExpandX = minX - padX < curX[0] || maxX + padX > curX[1];
-            const needExpandY = minY - padY < curY[0] || maxY + padY > curY[1];
+            // Bez automatycznego rozszerzania zakresu
             const upd = {};
-            if (needExpandX) {
-                upd['xaxis.range'] = [ Math.min(curX[0], minX - padX), Math.max(curX[1], maxX + padX) ];
-            }
-            if (needExpandY) {
-                upd['yaxis.range'] = [ Math.min(curY[0], minY - padY), Math.max(curY[1], maxY + padY) ];
-            }
             if (Object.keys(upd).length) {
                 Plotly.relayout(gd, upd).then(() => { try { updateFsRangeFromLayout(gd.layout); } catch(_) {} });
             }
@@ -2182,18 +2221,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return val.toFixed(1);
             }
 
-            // Default cartesian layout (theme-aware)
-            // Dodaj 20% marginesu do zakresów dla lepszej widoczności
-            const xRange = xMax - xMin;
-            const yRange = yMax - yMin;
-            const xMargin = xRange * 0.2;
-            const yMargin = yRange * 0.2;
+            // Check if mobile device (small screen)
+            const isMobile = window.innerWidth <= 768;
             
+            // Default cartesian layout (theme-aware)
             let layout = {
                 dragmode: 'pan',
                 xaxis: { 
-                    title: { text: usePiAxis ? 'x (rad)' : 'x', font: { size: 16, weight: 600 } }, 
-                    range: [xMin - xMargin, xMax + xMargin], 
+                    title: null, 
+                    range: [xMin, xMax], 
                     type: 'linear',
                     gridcolor: t.grid || '#e0e0e0',
                     gridwidth: 1,
@@ -2207,15 +2243,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     ticktext: usePiAxis ? undefined : undefined
                 },
                 yaxis: { 
-                    title: { text: 'f(x)', font: { size: 16, weight: 600 } }, 
-                    range: [yMin - yMargin, yMax + yMargin], 
+                    title: null, 
+                    range: [yMin, yMax], 
                     type: 'linear',
                     gridcolor: t.grid || '#e0e0e0',
                     gridwidth: 1,
                     tickfont: { size: 13, color: t.tick },
                     linecolor: t.axis
                 },
-                margin: { t: 40, l: 60, r: 30, b: 50 },
+                margin: { t: 20, l: 20, r: 10, b: 30 },
                 showlegend: true,
                 legend: { 
                     x: 0.02, 
@@ -4246,12 +4282,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const xMin = Math.min(...testPoints);
             const xMax = Math.max(...testPoints);
-            const range = xMax - xMin;
-            const padding = Math.max(2, range * 0.2);
 
             return {
-                min: Math.round((xMin - padding) * 100) / 100,
-                max: Math.round((xMax + padding) * 100) / 100
+                min: Math.round(xMin * 100) / 100,
+                max: Math.round(xMax * 100) / 100
             };
         } catch (e) {
             return { min: -10, max: 10 }; // w razie błędu
@@ -4287,14 +4321,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const minv = Math.min(...finite);
             const maxv = Math.max(...finite);
             if (!isFinite(minv) || !isFinite(maxv) || minv >= maxv) return null;
-            const padding2 = Math.max(0.1, 0.05 * (maxv - minv));
-            return { min: Math.round((minv - padding2) * 100) / 100, max: Math.round((maxv + padding2) * 100) / 100 };
+            return { min: Math.round(minv * 100) / 100, max: Math.round(maxv * 100) / 100 };
         }
 
-        const padding = 0.05 * (high - low);
         return {
-            min: Math.round((low - padding) * 100) / 100,
-            max: Math.round((high + padding) * 100) / 100
+            min: Math.round(low * 100) / 100,
+            max: Math.round(high * 100) / 100
         };
     }
 

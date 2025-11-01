@@ -13,7 +13,7 @@ html, body {
 .calculator-container {
     max-width: 100%;
     margin: 0;
-    padding: 2px;
+    padding: 0;
     background: #ffffff;
     border-radius: 0;
     box-shadow: none;
@@ -31,15 +31,15 @@ html, body {
 
 .calculator-header h2 {
     color: #2c3e50;
-    margin: 0 0 6px 0; /* align with sidebar (left) */
-    font-size: 1.8em;
+    margin: 0 0 2px 0;
+    font-size: 1.4em;
     font-weight: 700;
     max-width: var(--header-content-width);
 }
 
 /* Wrap all top fieldsets and the plot button to a common max width */
 .function-input-container {
-    margin: 0 0 3px 0; /* align with sidebar (left) */
+    margin: 0;
     max-width: var(--header-content-width);
     width: 100%;
 }
@@ -55,9 +55,9 @@ html, body {
 /* UI Groups - Fieldsets & Details */
 .ui-group {
     border: 1px solid #e1e8ed;
-    border-radius: 2px;
-    padding: 6px 10px;
-    margin-bottom: 3px;
+    border-radius: 0;
+    padding: 4px 8px;
+    margin-bottom: 2px;
     background: linear-gradient(135deg, #fafbfc 0%, #f8f9fa 100%);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
@@ -70,9 +70,9 @@ html, body {
 }
 
 .ui-group legend {
-    padding: 3px 8px;
+    padding: 2px 6px;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     color: #2c3e50;
     background: white;
     border: 1px solid #dee2e6;
@@ -212,10 +212,10 @@ input::placeholder {
 .function-field {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     background: #f8f9fa;
     border-radius: 0;
-    padding: 2px 2px;
+    padding: 1px;
     border: 1px solid #e0e0e0;
     transition: border-color 0.2s ease;
 }
@@ -227,23 +227,23 @@ input::placeholder {
 
 .function-label {
     font-family: 'Consolas', monospace;
-    font-size: 17px;
+    font-size: 14px;
     font-weight: 600;
     color: #2c3e50;
-    min-width: 55px;
+    min-width: 45px;
 }
 
 .function-field input {
     flex: 1 1 55%;
     min-width: 180px;
-    padding: 4px 6px;
-    font-size: 15px;
+    padding: 2px 4px;
+    font-size: 14px;
     border: none;
     font-family: 'Consolas', monospace;
     background: #ffffff;
     color: #212529;
     outline: none;
-    line-height: 1.4;
+    line-height: 1.2;
     border-radius: 0;
 }
 
@@ -349,7 +349,8 @@ input::placeholder {
 .calculator-main {
     display: flex;
     gap: 8px;
-    margin-bottom: 5px;
+    margin-bottom: 2px;
+    margin-top: 2px;
     overflow: hidden;
     width: 100%;
 }
@@ -486,36 +487,45 @@ input::placeholder {
     border-radius: 0;
     background: white;
     overflow: hidden;
-    min-height: calc(100% - 35px); /* Minus header height */
+    min-height: calc(100% - 65px); /* Minus header + controls height */
 }
 
 .history-panel #historyList {
     flex: 1;
-    overflow-y: auto;
+    max-height: calc(274px - 35px);
+    overflow-y: scroll;
     overflow-x: hidden;
     margin: 0;
     padding: 6px;
     background: white;
     padding-right: 4px;
+    scrollbar-gutter: stable;
 }
 
-/* Custom scrollbars for history */
+/* Custom scrollbars for history - always visible */
 .history-panel #historyList::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
 }
 
 .history-panel #historyList::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 0;
+    border: 1px solid #e0e0e0;
 }
 
 .history-panel #historyList::-webkit-scrollbar-thumb {
     background: #90caf9;
     border-radius: 0;
+    border: 1px solid #64b5f6;
+    min-height: 20px;
 }
 
 .history-panel #historyList::-webkit-scrollbar-thumb:hover {
     background: #64b5f6;
+}
+
+.history-panel #historyList::-webkit-scrollbar-corner {
+    background: #f1f1f1;
 }
 .analysis-results #analysisResultsContent {
     /* make content the scroll container */
@@ -617,6 +627,8 @@ input::placeholder {
     border-radius: 0;
     cursor: grab;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 #myChart:active {
@@ -894,8 +906,8 @@ button:active {
 #plotButton {
     background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
     color: white;
-    padding: 11px 18px;
-    font-size: 15px;
+    padding: 6px 12px;
+    font-size: 14px;
     font-weight: 700;
     box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
 }
@@ -1149,7 +1161,7 @@ code {
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     border: 2px solid #e3f2fd;
     border-radius: 0;
-    padding: 10px 12px;
+    padding: 8px 10px;
     margin: 0;
     box-shadow: 0 2px 6px rgba(33, 150, 243, 0.1);
     animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1171,11 +1183,36 @@ code {
     color: #1976d2;
     font-size: 16px;
     font-weight: 700;
-    margin: 0 0 14px 0;
+    margin: 0 0 6px 0;
+}
+
+.analysis-controls,
+.history-controls {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 6px;
+    margin: 0 0 8px 0;
+}
+
+.analysis-controls button,
+.history-controls button {
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    color: #666;
+    font-size: 11px;
+    padding: 2px 6px;
+    height: 22px;
+    min-width: 60px;
+    border-radius: 0;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.analysis-controls button:hover,
+.history-controls button:hover {
+    background: #e8f4fd;
+    border-color: #90caf9;
+    color: #1976d2;
 }
 
 .analysis-expand {
@@ -1197,18 +1234,19 @@ code {
 
 /* Analysis expanded state */
 .analysis-results.expanded {
-    position: fixed;
+    position: fixed !important;
     top: 20px;
     left: 20px;
     right: 20px;
     bottom: 20px;
-    z-index: 1000;
-    background: white;
-    border: 3px solid #90caf9;
+    z-index: 10000 !important;
+    background: white !important;
+    border: 3px solid #90caf9 !important;
     border-radius: 0;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
     overflow: hidden;
-    flex: none;
+    flex: none !important;
+    box-sizing: border-box !important;
 }
 
 .analysis-results.expanded h4 {
@@ -1219,7 +1257,7 @@ code {
 }
 
 .analysis-results.expanded #analysisResultsContent {
-    height: calc(100% - 60px);
+    height: calc(100% - 90px);
     padding: 16px;
 }
 
@@ -1228,28 +1266,37 @@ code {
     font-size: 13px;
     line-height: 1.8;
     flex: 1;
-    overflow-y: auto;
+    max-height: calc(420px - 68px);
+    overflow-y: scroll;
     overflow-x: hidden;
     padding-right: 4px;
+    scrollbar-gutter: stable;
 }
 
-/* Custom scrollbars for analysis */
+/* Custom scrollbars for analysis - always visible */
 .analysis-results #analysisResultsContent::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
 }
 
 .analysis-results #analysisResultsContent::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 0;
+    border: 1px solid #e0e0e0;
 }
 
 .analysis-results #analysisResultsContent::-webkit-scrollbar-thumb {
     background: #90caf9;
     border-radius: 0;
+    border: 1px solid #64b5f6;
+    min-height: 20px;
 }
 
 .analysis-results #analysisResultsContent::-webkit-scrollbar-thumb:hover {
     background: #64b5f6;
+}
+
+.analysis-results #analysisResultsContent::-webkit-scrollbar-corner {
+    background: #f1f1f1;
 }
 
 .analysis-results #analysisResultsContent:empty::before {
@@ -1311,11 +1358,11 @@ code {
     font-size: 13px !important;
 }
 
-/* Responsywność dla urządzeń mobilnych */
+/* Responsywność dla tabletów */
 @media (max-width: 768px) {
     .calculator-container {
-        margin: 10px;
-        padding: 15px;
+        margin: 5px;
+        padding: 5px;
     }
 
     .calculator-main {
@@ -1330,6 +1377,41 @@ code {
     #myChart {
         order: 1;
         height: 400px !important;
+    }
+    
+    /* Tablet layout for results - side by side but smaller */
+    .calculator-results {
+        width: 100% !important;
+        height: auto !important;
+        order: 3;
+        margin-top: 15px;
+    }
+    
+    .insights-row {
+        height: auto !important;
+    }
+    
+    .analysis-results,
+    .history-panel {
+        height: 300px !important;
+    }
+    
+    .results-toggle {
+        display: none !important;
+    }
+    
+    /* Responsive fullscreen analysis for tablets */
+    .analysis-results.expanded {
+        top: 10px !important;
+        left: 10px !important;
+        width: calc(100vw - 20px) !important;
+        height: calc(100vh - 20px) !important;
+        right: auto !important;
+        bottom: auto !important;
+        border: 2px solid #90caf9 !important;
+        z-index: 9999 !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
     }
 
     .compact-input {
@@ -1356,6 +1438,52 @@ code {
     .axes-2 { grid-template-columns: 1fr 1fr; }
 }
 
+/* Responsywność dla telefonów w poziomie */
+@media (max-width: 640px) {
+    .calculator-results {
+        width: 100% !important;
+        height: auto !important;
+        order: 3;
+        margin-top: 15px;
+    }
+    
+    .insights-row {
+        flex-direction: column !important;
+        height: auto !important;
+    }
+    
+    .analysis-results,
+    .history-panel {
+        width: 100% !important;
+        height: 280px !important;
+        margin-bottom: 15px;
+    }
+    
+    .results-toggle {
+        display: none !important;
+    }
+    
+    /* Minimize chart margins on mobile */
+    #myChart {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Responsive fullscreen analysis for medium phones */
+    .analysis-results.expanded {
+        top: 5px !important;
+        left: 5px !important;
+        width: calc(100vw - 10px) !important;
+        height: calc(100vh - 10px) !important;
+        right: auto !important;
+        bottom: auto !important;
+        border: 2px solid #90caf9 !important;
+        z-index: 9999 !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+    }
+}
+
 /* Dla bardzo małych ekranów */
 @media (max-width: 480px) {
     .range-inputs {
@@ -1377,6 +1505,88 @@ code {
     }
     .calculator-sidebar {
         width: 100%;
+    }
+    
+    /* Mobile layout for results panel */
+    .calculator-results {
+        width: 100% !important;
+        height: auto !important;
+        order: 3;
+        margin-top: 15px;
+    }
+    
+    .insights-row {
+        flex-direction: column !important;
+        height: auto !important;
+    }
+    
+    .analysis-results,
+    .history-panel {
+        width: 100% !important;
+        height: 250px !important;
+        margin-bottom: 15px;
+    }
+    
+    .analysis-results #analysisResultsContent {
+        max-height: 180px !important;
+    }
+    
+    .history-panel .history-body {
+        min-height: 180px !important;
+    }
+    
+    .results-toggle {
+        display: none !important;
+    }
+    
+    /* Minimize all margins on mobile */
+    #myChart {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .calculator-container {
+        margin: 0 !important;
+        padding: 2px !important;
+    }
+    
+    /* Mobile fullscreen analysis */
+    .analysis-results.expanded {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        right: auto !important;
+        bottom: auto !important;
+        border-radius: 0 !important;
+        border: 2px solid #90caf9 !important;
+        z-index: 99999 !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+    }
+    
+    /* Ensure parent containers don't hide the expanded panel */
+    body:has(.analysis-results.expanded) {
+        overflow: visible !important;
+    }
+    
+    .calculator-container:has(.analysis-results.expanded),
+    .calculator-main:has(.analysis-results.expanded) {
+        overflow: visible !important;
+    }
+    
+    .analysis-results.expanded h4 {
+        padding: 8px 12px !important;
+        font-size: 14px !important;
+    }
+    
+    .analysis-results.expanded #analysisResultsContent {
+        height: calc(100% - 60px) !important;
+        padding: 12px !important;
+        font-size: 12px !important;
     }
 }
 

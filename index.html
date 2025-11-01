@@ -191,27 +191,27 @@
                 <!-- GRUPA: Renderowanie -->
                 <fieldset class="ui-group">
                     <legend>⚙️ Renderowanie</legend>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:start;">
                         <div>
-                            <label for="angleMode" style="display:block;margin-bottom:6px;font-weight:500;">Kąty:</label>
-                            <select id="angleMode" style="width:100%;padding:8px;">
+                            <label for="angleMode" style="display:block;margin-bottom:2px;font-weight:500;font-size:12px;">Kąty:</label>
+                            <select id="angleMode" style="width:100%;padding:3px;font-size:12px;">
                                 <option value="radians">Radiany</option>
                                 <option value="degrees">Stopnie</option>
                             </select>
                         </div>
                         <div>
-                            <label for="samplingPreset" style="display:block;margin-bottom:6px;font-weight:500;">Dokładność:</label>
-                            <select id="samplingPreset" style="width:100%;padding:8px;">
+                            <label for="samplingPreset" style="display:block;margin-bottom:2px;font-weight:500;font-size:12px;">Dokładność:</label>
+                            <select id="samplingPreset" style="width:100%;padding:3px;font-size:12px;">
                                 <option value="default" selected>Domyślna</option>
                                 <option value="fast">Szybko</option>
                                 <option value="quality">Precyzyjna</option>
                             </select>
                         </div>
-                    </div>
-                    <div style="margin-top:10px;">
-                        <label style="display:flex;align-items:center;cursor:pointer;">
-                            <input type="checkbox" id="piAxisCheckbox">&nbsp;Oś X w wielokrotnościach π
-                        </label>
+                        <div>
+                            <label style="display:flex;align-items:center;cursor:pointer;font-size:12px;margin-top:16px;">
+                                <input type="checkbox" id="piAxisCheckbox" style="margin-right:4px;">Oś X w π
+                            </label>
+                        </div>
                     </div>
                 </fieldset>
 
@@ -506,13 +506,16 @@
                 <div id="insightsToggle" class="insights">
                     <div class="insights-row">
                         <div id="analysisResults" class="analysis-results">
-                            <h4>📋 Wyniki analizy <button id="analysisExpand" class="analysis-expand" title="Rozwiń analizę">⛶</button></h4>
+                            <h4>📋 Wyniki analizy</h4>
+                            <div class="analysis-controls">
+                                <button id="analysisExpand" class="analysis-expand" title="Rozwiń analizę">⛶ Pełny ekran</button>
+                            </div>
                             <div id="analysisResultsContent"></div>
                         </div>
                         <div id="historyPanel" class="history-panel">
-                            <div class="history-header">
-                                <span>📜 Historia</span>
-                                <button id="clearHistoryButton" title="Wyczyść historię">Wyczyść</button>
+                            <h4>📜 Historia</h4>
+                            <div class="history-controls">
+                                <button id="clearHistoryButton" title="Wyczyść historię">🗑️ Wyczyść historię</button>
                             </div>
                             <div class="history-body">
                                 <div id="historyList"></div>
