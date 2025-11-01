@@ -2,8 +2,8 @@ Interaktywny Kalkulator Funkcji — wykresy 2D/3D, całki i analiza (Plotly, JS)
  
 Wizualizuj funkcje w trybach kartezjańskim, parametrycznym, biegunowym oraz 3D. Licz całki oznaczone, długość krzywej, pola w biegunowych i obszar między krzywymi. Aplikacja działa płynnie na komputerze i telefonie — cięższe obliczenia są wykonywane w Web Workerze, więc UI pozostaje responsywny.
 
-Demo (GitHub Pages)
-- https://nevillkw.github.io/kalkulator-funkcji/
+Demo (Oficjalna strona)
+- https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/
 
 Najważniejsze funkcje
 - Tryby: kartezjański (y=f(x)), parametryczny (x(t), y(t)), biegunowy (r(t)), 3D (z=f(x,y))
@@ -38,16 +38,18 @@ Jak uruchomić lokalnie
 2. Otwórz index.html w przeglądarce
 	- Tip: dla poprawnego działania niektórych przeglądarek uruchom prosty serwer HTTP (np. Python `python -m http.server` lub VS Code Live Server)
 
-Publikacja na GitHub Pages
-1. W ustawieniach repo (Settings → Pages) wybierz Source: Deploy from a branch
-2. Branch: `main`, folder `/ (root)` i Zapisz
-3. Strona będzie dostępna pod adresem: https://<twoj-user>.github.io/<nazwa-repo>/ (dla tego repo: https://nevillkw.github.io/kalkulator-funkcji/)
+Publikacja
+Ta instancja jest publikowana na stronie: https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/
 
 Kontrybucje
-Chętnie przyjmę zgłoszenia błędów i propozycje funkcji. Otwórz Issue, a jeśli chcesz wysłać PR — opisz krótko zmianę i dołącz zrzut ekranu/animację, jeśli to UI.
+Zgłoszenia błędów i propozycje funkcji są mile widziane. Pull Requesty mogą zostać rozpatrzone, jednak zastrzegam sobie prawo do odrzucenia zmian. Wszelkie zaakceptowane kontrybucje stają się częścią projektu objętego niżej wskazanymi warunkami licencyjnymi.
 
 Bezpieczeństwo
 Jeśli znajdziesz podatność, skorzystaj z sekcji Security Advisories lub zgłoś przez Issues (oznaczając jako “security”).
 
 Licencja
-MIT — szczegóły w pliku LICENSE.
+Wszystkie prawa zastrzeżone. © 2025 Artur Mrowicki.
+
+Ten projekt i powiązane materiały (kod źródłowy, zasoby, dokumentacja) są objęte ochroną prawnoautorską. Kopiowanie, modyfikowanie, rozpowszechnianie lub wykorzystywanie w całości lub w części bez uprzedniej, pisemnej zgody właściciela praw jest zabronione.
+
+Zezwala się na korzystanie z aplikacji w formie dostępnej pod adresem https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/ zgodnie z jej przeznaczeniem. W sprawie licencji, współpracy lub komercyjnego wykorzystania proszę o kontakt: https://arturmrowicki.pl
