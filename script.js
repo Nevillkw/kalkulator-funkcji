@@ -1894,6 +1894,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const derivativePlotCheckbox = document.getElementById('derivativePlotCheckbox');
     const integralControls = document.querySelector('.integral-controls');
     const betweenCurvesControls = document.querySelector('.between-curves-controls');
+    const monoCk = document.getElementById('monotonicityCheckbox');
+    const concCk = document.getElementById('concavityCheckbox');
 
         if (mode === 'cartesian') {
             if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'block';
@@ -1920,6 +1922,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (betweenCurvesControls) {
                 betweenCurvesControls.style.display = 'block';
             }
+            if (monoCk) monoCk.parentElement.style.display = 'block';
+            if (concCk) concCk.parentElement.style.display = 'block';
         } else if (mode === 'parametric') {
             if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
             if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
@@ -1944,6 +1948,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (betweenCurvesControls) {
                 betweenCurvesControls.style.display = 'none';
+            }
+            if (monoCk) {
+                monoCk.parentElement.style.display = 'none';
+                if (monoCk.checked) { monoCk.checked = false; monoCk.dispatchEvent(new Event('change', { bubbles:true })); }
+            }
+            if (concCk) {
+                concCk.parentElement.style.display = 'none';
+                if (concCk.checked) { concCk.checked = false; concCk.dispatchEvent(new Event('change', { bubbles:true })); }
             }
         } else if (mode === 'polar') {
             if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
@@ -1970,6 +1982,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (betweenCurvesControls) {
                 betweenCurvesControls.style.display = 'none';
             }
+            if (monoCk) {
+                monoCk.parentElement.style.display = 'none';
+                if (monoCk.checked) { monoCk.checked = false; monoCk.dispatchEvent(new Event('change', { bubbles:true })); }
+            }
+            if (concCk) {
+                concCk.parentElement.style.display = 'none';
+                if (concCk.checked) { concCk.checked = false; concCk.dispatchEvent(new Event('change', { bubbles:true })); }
+            }
         } else if (mode === '3d') {
             if (zerosCheckbox) zerosCheckbox.parentElement.style.display = 'none';
             if (extremaCheckbox) extremaCheckbox.parentElement.style.display = 'none';
@@ -1987,6 +2007,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (asymCk3) asymCk3.parentElement.style.display = 'none';
             if (integralControls) integralControls.style.display = 'none';
             if (betweenCurvesControls) betweenCurvesControls.style.display = 'none';
+            if (monoCk) {
+                monoCk.parentElement.style.display = 'none';
+                if (monoCk.checked) { monoCk.checked = false; monoCk.dispatchEvent(new Event('change', { bubbles:true })); }
+            }
+            if (concCk) {
+                concCk.parentElement.style.display = 'none';
+                if (concCk.checked) { concCk.checked = false; concCk.dispatchEvent(new Event('change', { bubbles:true })); }
+            }
         }
 
         function updateDerivativeLabel(checkbox, newText) {
