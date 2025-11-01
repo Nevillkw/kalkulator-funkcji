@@ -440,8 +440,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const fsDark = document.getElementById('fsDark');
     const fsStartMinimizedMobile = document.getElementById('fsStartMinimizedMobile');
     const fsLineWidth = document.getElementById('fsLineWidth');
-    const permalinkBaseRaw = (document.body && document.body.dataset && document.body.dataset.permalinkBase) ? document.body.dataset.permalinkBase.trim() : '';
-    const permalinkBase = permalinkBaseRaw ? permalinkBaseRaw.replace(/[?#].*$/, '') : '';
 
     // --- Permalink helpers ---
     function encodeObjToB64(obj){
@@ -467,8 +465,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function buildPermalink(snapshot){
         const s = encodeObjToB64(snapshot);
-        let base = permalinkBase || (window.location.origin + window.location.pathname.replace(/[?#].*$/, ''));
-        if (!base.endsWith('/')) base += '/';
+        // Force production permalink base so shared links open on the official site
+        const base = 'https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/';
         return `${base}#s=${s}`;
     }
     function updatePermalink(snapshot){
