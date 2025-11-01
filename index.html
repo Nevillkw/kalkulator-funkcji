@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interaktywny Kalkulator Funkcji — wykresy 2D/3D, całki i analiza (Plotly, JS)</title>
     <meta name="description" content="Rysuj wykresy funkcji (2D/3D), licz całki oznaczone, pola i długości krzywych. Tryby: kartezjański, parametryczny, biegunowy. Działa na telefonie, obsługuje π. Kod na GitHub.">
-    <link rel="canonical" href="https://nevillkw.github.io/kalkulator-funkcji/">
+    <link rel="canonical" href="https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/">
     <meta property="og:title" content="Interaktywny Kalkulator Funkcji — wykresy 2D/3D, całki i analiza">
     <meta property="og:description" content="Wykresy 2D/3D, całki i pola, obszar między krzywymi, tryby parametryczny i biegunowy. Mobile fullscreen, π w granicach, start 10×10.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://nevillkw.github.io/kalkulator-funkcji/">
-    <meta property="og:image" content="https://nevillkw.github.io/kalkulator-funkcji/favicon.svg">
+    <meta property="og:url" content="https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/">
+    <meta property="og:image" content="https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/favicon.svg">
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Interaktywny Kalkulator Funkcji — wykresy 2D/3D, całki i analiza">
     <meta name="twitter:description" content="Wykresy 2D/3D, całki i pola, obszar między krzywymi, tryby parametryczny i biegunowy. Mobile fullscreen, π w granicach.">
@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-permalink-base="https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/">
     <div class="calculator-container">
         <div class="calculator-header">
             <h2>Kalkulator Funkcji Matematycznych</h2>
@@ -215,7 +215,10 @@
                     </div>
                 </fieldset>
 
-                <button id="plotButton">Rysuj wykres</button>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button id="plotButton">Rysuj wykres</button>
+                    <button id="shareLinkButton" title="Skopiuj link do tego widoku" style="background:#0b5ed7;color:#fff;">🔗 Udostępnij link</button>
+                </div>
             </div>
         </div>
         

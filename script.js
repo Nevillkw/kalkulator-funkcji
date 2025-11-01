@@ -318,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const functionInput = document.getElementById('functionInput');
     const function2Input = document.getElementById('function2Input');
     const plotButton = document.getElementById('plotButton');
+    const shareLinkButton = document.getElementById('shareLinkButton');
     const myChartCanvas = document.getElementById('myChart');
     const errorDisplay = document.getElementById('errorDisplay');
     const xMinInput = document.getElementById('xMin');
@@ -439,6 +440,72 @@ document.addEventListener('DOMContentLoaded', () => {
     const fsDark = document.getElementById('fsDark');
     const fsStartMinimizedMobile = document.getElementById('fsStartMinimizedMobile');
     const fsLineWidth = document.getElementById('fsLineWidth');
+    const permalinkBaseRaw = (document.body && document.body.dataset && document.body.dataset.permalinkBase) ? document.body.dataset.permalinkBase.trim() : '';
+    const permalinkBase = permalinkBaseRaw ? permalinkBaseRaw.replace(/[?#].*$/, '') : '';
+
+    // --- Permalink helpers ---
+    function encodeObjToB64(obj){
+        try {
+            const json = JSON.stringify(obj);
+            // UTF-8 safe Base64
+            const utf8 = encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode('0x' + p1));
+            const b64 = btoa(utf8)
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/,'');
+            return b64;
+        } catch(e) { console.warn('encodeObjToB64 failed', e); return ''; }
+    }
+    function decodeB64ToObj(b64){
+        try {
+            const pad = b64.length % 4 === 2 ? '==' : (b64.length % 4 === 3 ? '=' : '');
+            const s = b64.replace(/-/g,'+').replace(/_/g,'/') + pad;
+            const str = atob(s);
+            const json = decodeURIComponent(Array.prototype.map.call(str, c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+            return JSON.parse(json);
+        } catch(e) { console.warn('decodeB64ToObj failed', e); return null; }
+    }
+    function buildPermalink(snapshot){
+        const s = encodeObjToB64(snapshot);
+        let base = permalinkBase || (window.location.origin + window.location.pathname.replace(/[?#].*$/, ''));
+        if (!base.endsWith('/')) base += '/';
+        return `${base}#s=${s}`;
+    }
+    function updatePermalink(snapshot){
+        try {
+            const url = buildPermalink(snapshot);
+            if (history && history.replaceState) {
+                history.replaceState(null, '', url);
+            } else {
+                window.location.hash = 's=' + (encodeObjToB64(snapshot) || '');
+            }
+            // Notify parent (if embedded) about new permalink
+            try {
+                if (isInIframe()) {
+                    parent.postMessage({ type: 'kalkulator-funkcji/permalink', url, snapshot }, '*');
+                }
+            } catch(_) {}
+        } catch(_) {}
+    }
+    function tryRestoreFromURL(){
+        try {
+            let sParam = '';
+            // Support both hash and query param
+            if (window.location.hash && window.location.hash.startsWith('#s=')) {
+                sParam = window.location.hash.substring(3);
+            } else {
+                const usp = new URLSearchParams(window.location.search);
+                sParam = usp.get('s') || '';
+            }
+            if (!sParam) return false;
+            const snap = decodeB64ToObj(sParam);
+            if (snap && typeof snap === 'object') {
+                restoreSnapshot(snap);
+                return true;
+            }
+        } catch(e) { console.warn('Failed to restore from URL', e); }
+        return false;
+    }
 
     // Insights panel is now always visible (no toggle functionality needed)
 
@@ -642,6 +709,55 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 350);
         });
     }
+
+    // Share link button handler
+    if (shareLinkButton) {
+        shareLinkButton.addEventListener('click', async () => {
+            try {
+                const snap = captureSnapshot();
+                const url = buildPermalink(snap);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(url);
+                    const prev = shareLinkButton.textContent;
+                    shareLinkButton.textContent = '✅ Skopiowano link';
+                    setTimeout(() => { shareLinkButton.textContent = prev; }, 1400);
+                } else {
+                    // Fallback
+                    window.prompt('Skopiuj link:', url);
+                }
+            } catch(e) { console.warn('Share link failed', e); }
+        });
+    }
+
+    // Try restoring from URL at startup (returns boolean)
+    const _restoredFromURL = tryRestoreFromURL();
+
+    // Parent <-> iframe API for embedding scenarios
+    try {
+        window.addEventListener('message', (ev) => {
+            const msg = ev && ev.data;
+            if (!msg || !msg.type) return;
+            if (msg.type === 'kalkulator-funkcji/restore') {
+                // Accept either base64 string (s) or full snapshot object
+                const s = msg.s;
+                const snap = msg.snapshot || (s ? decodeB64ToObj(s) : null);
+                if (snap && typeof snap === 'object') {
+                    restoreSnapshot(snap);
+                }
+            } else if (msg.type === 'kalkulator-funkcji/getPermalink') {
+                try {
+                    const snap = captureSnapshot();
+                    const url = buildPermalink(snap);
+                    ev.source && ev.source.postMessage({ type: 'kalkulator-funkcji/permalink', url, snapshot: snap }, ev.origin || '*');
+                } catch(_) {}
+            } else if (msg.type === 'kalkulator-funkcji/getState') {
+                try {
+                    const snap = captureSnapshot();
+                    ev.source && ev.source.postMessage({ type: 'kalkulator-funkcji/state', snapshot: snap }, ev.origin || '*');
+                } catch(_) {}
+            }
+        });
+    } catch(_) {}
 
     // Copy analysis to clipboard helper
     async function copyAnalysisFrom(element) {
@@ -5052,6 +5168,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timestamp,
             timeStr,
             mode,
+            v: 1,
             cartesian: {
                 expr1: (functionInput && functionInput.value) || '',
                 expr2: (function2Input && function2Input.value) || '',
@@ -5084,7 +5201,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 extrema: (document.getElementById('extremaCheckbox') || {}).checked || false,
                 inflections: (document.getElementById('inflectionsCheckbox') || {}).checked || false,
                 intersections: (document.getElementById('intersectionsCheckbox') || {}).checked || false,
-                derivative: (document.getElementById('derivativePlotCheckbox') || {}).checked || false
+                derivative: (document.getElementById('derivativePlotCheckbox') || {}).checked || false,
+                tangent: (document.getElementById('tangentToolCheckbox') || {}).checked || false,
+                paramClick: (document.getElementById('paramClickToolCheckbox') || {}).checked || false,
+                monotonicity: (document.getElementById('monotonicityCheckbox') || {}).checked || false,
+                concavity: (document.getElementById('concavityCheckbox') || {}).checked || false,
+                asymptotes: (document.getElementById('asymptotesCheckbox') || {}).checked || false
+            },
+            render: {
+                angleMode: (document.getElementById('angleMode') || {}).value || 'radians',
+                sampling: (document.getElementById('samplingPreset') || {}).value || 'default',
+                piAxis: (document.getElementById('piAxisCheckbox') || {}).checked || false
             },
             params: collectScope()
         };
@@ -5166,12 +5293,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const inflectionsCheck = document.getElementById('inflectionsCheckbox');
         const intersectionsCheck = document.getElementById('intersectionsCheckbox');
         const derivativeCheck = document.getElementById('derivativePlotCheckbox');
+        const tangentToolCheck = document.getElementById('tangentToolCheckbox');
+        const paramClickCheck = document.getElementById('paramClickToolCheckbox');
+        const monotonicityCheck = document.getElementById('monotonicityCheckbox');
+        const concavityCheck = document.getElementById('concavityCheckbox');
+        const asymptotesCheck = document.getElementById('asymptotesCheckbox');
         
         if (zerosCheck) zerosCheck.checked = snapshot.analysis.zeros;
         if (extremaCheck) extremaCheck.checked = snapshot.analysis.extrema;
         if (inflectionsCheck) inflectionsCheck.checked = snapshot.analysis.inflections;
         if (intersectionsCheck) intersectionsCheck.checked = snapshot.analysis.intersections;
         if (derivativeCheck) derivativeCheck.checked = snapshot.analysis.derivative;
+        if (tangentToolCheck && Object.prototype.hasOwnProperty.call(snapshot.analysis,'tangent')) tangentToolCheck.checked = !!snapshot.analysis.tangent;
+        if (paramClickCheck && Object.prototype.hasOwnProperty.call(snapshot.analysis,'paramClick')) paramClickCheck.checked = !!snapshot.analysis.paramClick;
+        if (monotonicityCheck && Object.prototype.hasOwnProperty.call(snapshot.analysis,'monotonicity')) monotonicityCheck.checked = !!snapshot.analysis.monotonicity;
+        if (concavityCheck && Object.prototype.hasOwnProperty.call(snapshot.analysis,'concavity')) concavityCheck.checked = !!snapshot.analysis.concavity;
+        if (asymptotesCheck && Object.prototype.hasOwnProperty.call(snapshot.analysis,'asymptotes')) asymptotesCheck.checked = !!snapshot.analysis.asymptotes;
+
+        // Restore render settings
+        try {
+            if (snapshot.render && typeof snapshot.render === 'object'){
+                const angleMode = document.getElementById('angleMode');
+                const samplingPreset = document.getElementById('samplingPreset');
+                const piAxisCheckbox = document.getElementById('piAxisCheckbox');
+                if (angleMode && snapshot.render.angleMode) angleMode.value = snapshot.render.angleMode;
+                if (samplingPreset && snapshot.render.sampling) samplingPreset.value = snapshot.render.sampling;
+                if (piAxisCheckbox && Object.prototype.hasOwnProperty.call(snapshot.render,'piAxis')) piAxisCheckbox.checked = !!snapshot.render.piAxis;
+            }
+        } catch(_) {}
         
         // Restore parameters
         if (snapshot.params && typeof snapshot.params === 'object') {
@@ -5281,6 +5430,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load history on startup
     loadHistory();
+    // If no permalink restored, try restoring the latest item from history
+    try {
+        if (!_restoredFromURL && Array.isArray(plotHistory) && plotHistory.length > 0) {
+            const last = plotHistory[plotHistory.length - 1];
+            if (last) {
+                restoreSnapshot(last);
+                try { updatePermalink(last); } catch(_) {}
+            }
+        }
+    } catch(e) { console.warn('Failed to restore last history snapshot', e); }
     // Ustaw szybki preset próbkowania przy pierwszym uruchomieniu (dla szybkości)
     try {
         if (samplingPreset && !localStorage.getItem('samplingPresetInit')) {
@@ -5289,10 +5448,12 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('samplingPresetInit', '1');
         }
     } catch(_) {}
-    // Jednorazowy auto-plot na starcie, aby od razu coś ładnego wyświetlić
+    // Optional one-time auto-plot only if we already restored something
     try {
-        if (!localStorage.getItem('initialPlotted')) {
-            setTimeout(() => { const btn = document.getElementById('plotButton'); if (btn) btn.click(); }, 50);
+        if (!_restoredFromURL && (!Array.isArray(plotHistory) || plotHistory.length === 0)) {
+            // Do not auto-plot with empty inputs; wait for user
+        } else if (!localStorage.getItem('initialPlotted')) {
+            setTimeout(() => { const btn = document.getElementById('plotButton'); if (btn) btn.click(); }, 80);
             localStorage.setItem('initialPlotted', '1');
         }
     } catch(_) {}
@@ -5609,9 +5770,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 calcWorker.addEventListener('message', onMessage);
                 calcWorker.postMessage({ type: 'compute', payload });
                 
-                // Save to history after successful plot initiation
+                // Save to history and update permalink after successful plot initiation
                 const snapshot = captureSnapshot();
                 addToHistory(snapshot);
+                updatePermalink(snapshot);
                 
                 return; // wait for worker to respond
             }
@@ -5647,6 +5809,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     renderFromComputation({ mode: 'cartesian', samples1: { x: xs, y: ys }, samples2: compiled2 ? { x: xs2, y: ys2 } : null, intersections: [], zeros: [], extrema: [] }, functionInput.value, expr2 || '');
                     errorDisplay.textContent = '';
+                    const snapshot = captureSnapshot();
+                    addToHistory(snapshot);
+                    updatePermalink(snapshot);
                     return;
                 } else if (mode === 'parametric') {
                     const xExpr = (xParamInput && xParamInput.value) || '';
