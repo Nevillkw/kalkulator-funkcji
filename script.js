@@ -426,6 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fsIntersections = document.getElementById('fsIntersections');
     const fsDerivative = document.getElementById('fsDerivative');
     const fsAsymptotes = document.getElementById('fsAsymptotes');
+    const fsTangent = document.getElementById('fsTangent');
     const fsLegend = document.getElementById('fsLegend');
     const fsGrid = document.getElementById('fsGrid');
     const fsZeroLines = document.getElementById('fsZeroLines');
@@ -1366,6 +1367,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setLabelVis(fsInflections, true);
             setLabelVis(fsIntersections, true);
             setLabelVis(fsDerivative, true);
+            setLabelVis(fsTangent, true);
             setLabelVis(fsAsymptotes, true);
         } else if (mode === 'parametric') {
             setLabelVis(fsZeros, false);
@@ -1373,6 +1375,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setLabelVis(fsInflections, false);
             setLabelVis(fsIntersections, false);
             setLabelVis(fsDerivative, true);
+            setLabelVis(fsTangent, false);
             setLabelVis(fsAsymptotes, false);
         } else if (mode === 'polar') {
             setLabelVis(fsZeros, false);
@@ -1380,6 +1383,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setLabelVis(fsInflections, false);
             setLabelVis(fsIntersections, false);
             setLabelVis(fsDerivative, true);
+            setLabelVis(fsTangent, false);
             setLabelVis(fsAsymptotes, false);
         } else if (mode === '3d') {
             setLabelVis(fsZeros, false);
@@ -1387,6 +1391,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setLabelVis(fsInflections, false);
             setLabelVis(fsIntersections, false);
             setLabelVis(fsDerivative, false);
+            setLabelVis(fsTangent, false);
             setLabelVis(fsAsymptotes, false);
         }
     }
@@ -1636,6 +1641,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fsInflections) fsInflections.checked = !!document.getElementById('inflectionsCheckbox')?.checked;
         if (fsIntersections) fsIntersections.checked = !!document.getElementById('intersectionsCheckbox')?.checked;
         if (fsDerivative) fsDerivative.checked = !!document.getElementById('derivativePlotCheckbox')?.checked;
+        if (fsTangent) fsTangent.checked = !!document.getElementById('tangentToolCheckbox')?.checked;
         if (fsAsymptotes) fsAsymptotes.checked = !!document.getElementById('asymptotesCheckbox')?.checked;
     }
     function toggleMainCheckbox(id, checked) {
@@ -1652,6 +1658,7 @@ document.addEventListener('DOMContentLoaded', () => {
         [fsInflections, 'inflectionsCheckbox'],
         [fsIntersections, 'intersectionsCheckbox'],
         [fsDerivative, 'derivativePlotCheckbox'],
+        [fsTangent, 'tangentToolCheckbox'],
         [fsAsymptotes, 'asymptotesCheckbox']
     ].forEach(([el, id]) => {
         if (el) el.addEventListener('change', () => toggleMainCheckbox(id, el.checked));
@@ -1870,6 +1877,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz pochodną f'(x)");
             }
+            const tangCk = document.getElementById('tangentToolCheckbox');
+            if (tangCk) tangCk.parentElement.style.display = 'block';
             const asymCk = document.getElementById('asymptotesCheckbox');
             if (asymCk) asymCk.parentElement.style.display = 'block';
             if (integralControls) {
@@ -1889,6 +1898,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz dx/dt, dy/dt");
             }
+            const tangCk = document.getElementById('tangentToolCheckbox');
+            if (tangCk) tangCk.parentElement.style.display = 'none';
             const asymCk = document.getElementById('asymptotesCheckbox');
             if (asymCk) asymCk.parentElement.style.display = 'none';
             if (integralControls) {
@@ -1908,6 +1919,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz dr/dθ");
             }
+            const tangCk2 = document.getElementById('tangentToolCheckbox');
+            if (tangCk2) tangCk2.parentElement.style.display = 'none';
             const asymCk2 = document.getElementById('asymptotesCheckbox');
             if (asymCk2) asymCk2.parentElement.style.display = 'none';
             if (integralControls) {
@@ -1924,6 +1937,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (inflectionsCheckbox) inflectionsCheckbox.parentElement.style.display = 'none';
             if (inflectionsQualityWrap) inflectionsQualityWrap.style.display = 'none';
             if (derivativePlotCheckbox) derivativePlotCheckbox.parentElement.style.display = 'none';
+            const tangCk3 = document.getElementById('tangentToolCheckbox');
+            if (tangCk3) tangCk3.parentElement.style.display = 'none';
             const asymCk3 = document.getElementById('asymptotesCheckbox');
             if (asymCk3) asymCk3.parentElement.style.display = 'none';
             if (integralControls) integralControls.style.display = 'none';
@@ -2044,6 +2059,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentParametricAnnotation = null; // centered label for parametric integral segment
     let currentAreaBetweenTrace = null;
     let currentAreaBetweenAnnotation = null; // centered label for area-between shading
+    // Tangent/Normal overlays
+    let currentTangentShapes = null; // array of 1-2 Plotly shape objects
+    let currentTangentAnnotations = null; // optional array with small equation/point info
 
     // Calculator worker - handles heavy computations
     let calcWorker = null;
@@ -2568,6 +2586,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 layout.annotations = (layout.annotations || []).concat([currentParametricAnnotation]);
             }
 
+            // Add tangent/normal overlays if present and tool enabled
+            const tangEnabledCk = document.getElementById('tangentToolCheckbox');
+            const tangEnabledNow = tangEnabledCk ? tangEnabledCk.checked : false;
+            if (resultPayload.mode === 'cartesian' && !resultPayload.polar && tangEnabledNow && currentTangentShapes && currentTangentShapes.length) {
+                layout.shapes = (layout.shapes || []).concat(currentTangentShapes);
+            }
+            if (resultPayload.mode === 'cartesian' && !resultPayload.polar && tangEnabledNow && currentTangentAnnotations && currentTangentAnnotations.length) {
+                layout.annotations = (layout.annotations || []).concat(currentTangentAnnotations);
+            }
+
             // Custom fullscreen modebar button (integrates with Plotly UI)
             const fsIcon = { width: 512, height: 512, path: 'M0,96 L0,0 96,0 96,32 32,32 32,96 Z M416,0 512,0 512,96 480,96 480,32 416,32 Z M0,416 32,416 32,480 96,480 96,512 0,512 Z M480,416 512,416 512,512 416,512 416,480 480,480 Z' };
             const fsButton = {
@@ -2630,6 +2658,113 @@ document.addEventListener('DOMContentLoaded', () => {
                         try { syncFsInputsFromMain(); } catch(_) {}
                         try { postFrameHeight('plot3d-relayout'); } catch(_) {}
                     } catch (e) { console.warn('Błąd podczas aktualizacji zakresów:', e); }
+                });
+
+                // Click-to-tangent/normal (cartesian only)
+                plotDiv.on('plotly_click', (ev) => {
+                    try {
+                        const modeEl = document.getElementById('plotMode');
+                        const mode = (modeEl && modeEl.value) || 'cartesian';
+                        const tangEnabled = !!document.getElementById('tangentToolCheckbox')?.checked;
+                        if (mode !== 'cartesian' || !tangEnabled) return;
+                        const pt = ev && ev.points && ev.points[0];
+                        if (!pt || typeof pt.x !== 'number') return;
+                        const x0 = pt.x;
+                        const xs = (samples1 && samples1.x) ? samples1.x : [];
+                        const ys = (samples1 && samples1.y) ? samples1.y : [];
+                        if (!Array.isArray(xs) || !Array.isArray(ys) || xs.length < 3 || ys.length !== xs.length) return;
+
+                        // Ensure xs ascending; if not, create sorted copy
+                        let xArr = xs, yArr = ys;
+                        if (xs.length >= 2 && xs[0] > xs[1]) {
+                            const idxs = xs.map((v,i)=>i).sort((a,b)=>xs[a]-xs[b]);
+                            xArr = idxs.map(i=>xs[i]);
+                            yArr = idxs.map(i=>ys[i]);
+                        }
+                        // Helper: find bracketing indices
+                        const findBracket = (x) => {
+                            let lo = 0, hi = xArr.length - 1;
+                            if (x <= xArr[0]) return [0, 1];
+                            if (x >= xArr[hi]) return [hi-1, hi];
+                            while (hi - lo > 1) {
+                                const mid = (lo + hi) >> 1;
+                                if (xArr[mid] <= x) lo = mid; else hi = mid;
+                            }
+                            return [lo, hi];
+                        };
+                        const [i0, i1] = findBracket(x0);
+                        const xA = xArr[i0], xB = xArr[i1];
+                        const yA = yArr[i0], yB = yArr[i1];
+                        const t = (x0 - xA) / Math.max(1e-12, (xB - xA));
+                        const y0 = yA + (yB - yA) * t;
+
+                        // Derivative: centered difference around nearest index
+                        let iNearest = (Math.abs(x0 - xA) < Math.abs(xB - x0)) ? i0 : i1;
+                        if (iNearest <= 0) iNearest = 1;
+                        if (iNearest >= xArr.length - 1) iNearest = xArr.length - 2;
+                        const xL = xArr[iNearest - 1], xR = xArr[iNearest + 1];
+                        const yL = yArr[iNearest - 1], yR = yArr[iNearest + 1];
+                        const denom = Math.max(1e-12, (xR - xL));
+                        const m = (yR - yL) / denom; // f'(x0) approx
+
+                        const layoutRanges = {
+                            x: (gd.layout.xaxis && gd.layout.xaxis.range) ? gd.layout.xaxis.range.slice() : [xMin, xMax],
+                            y: (gd.layout.yaxis && gd.layout.yaxis.range) ? gd.layout.yaxis.range.slice() : [yMin, yMax]
+                        };
+                        const xLeft = layoutRanges.x[0], xRight = layoutRanges.x[1];
+                        const yAt = (x) => y0 + m * (x - x0);
+                        const tang = {
+                            type: 'line',
+                            xref: 'x', yref: 'y',
+                            x0: xLeft, y0: yAt(xLeft),
+                            x1: xRight, y1: yAt(xRight),
+                            line: { color: '#6a4fb3', width: 2, dash: 'dash' }
+                        };
+                        // Normal line
+                        let normal;
+                        if (Math.abs(m) < 1e-6) {
+                            // normal is vertical x = x0
+                            normal = { type: 'line', xref:'x', yref:'paper', x0: x0, x1: x0, y0: 0, y1: 1, line: { color:'#2e7d32', width:2, dash:'dot' } };
+                        } else {
+                            const mn = -1 / m;
+                            const yN = (x) => y0 + mn * (x - x0);
+                            normal = { type: 'line', xref:'x', yref:'y', x0: xLeft, y0: yN(xLeft), x1: xRight, y1: yN(xRight), line: { color:'#2e7d32', width:2, dash:'dot' } };
+                        }
+                        // Annotation near the point
+                        const a = m, b = y0 - m * x0;
+                        const eqT = `T: y = ${a.toFixed(4)}·x ${b>=0?'+':'−'} ${Math.abs(b).toFixed(4)}`;
+                        let eqN;
+                        if (Math.abs(m) < 1e-6) eqN = `N: x = ${x0.toFixed(4)}`;
+                        else {
+                            const an = -1/m, bn = y0 - (-1/m)*x0;
+                            eqN = `N: y = ${an.toFixed(4)}·x ${bn>=0?'+':'−'} ${Math.abs(bn).toFixed(4)}`;
+                        }
+                        const ann = {
+                            x: x0,
+                            y: y0,
+                            xref: 'x', yref: 'y',
+                            text: `${eqT}<br>${eqN}<br>(x₀=${x0.toFixed(4)}, y₀=${y0.toFixed(4)})`,
+                            showarrow: true,
+                            arrowhead: 2,
+                            ax: 20,
+                            ay: -30,
+                            bgcolor: 'rgba(255,255,255,0.9)',
+                            bordercolor: '#90caf9',
+                            borderwidth: 1,
+                            font: { size: 12, color:'#37474f' }
+                        };
+
+                        currentTangentShapes = [tang, normal];
+                        currentTangentAnnotations = [ann];
+                        const newShapes = (gd.layout.shapes || []).filter(s => !s.__tangentTool);
+                        currentTangentShapes.forEach(s => { s.__tangentTool = true; });
+                        const newAnns = (gd.layout.annotations || []).filter(a=>!a.__tangentTool);
+                        currentTangentAnnotations.forEach(a => { a.__tangentTool = true; });
+                        Plotly.relayout(gd, {
+                            shapes: newShapes.concat(currentTangentShapes),
+                            annotations: newAnns.concat(currentTangentAnnotations)
+                        });
+                    } catch (_) { /* ignore */ }
                 });
 
                 // Setup nav buttons same as before
@@ -2955,6 +3090,9 @@ document.addEventListener('DOMContentLoaded', () => {
         currentParametricAnnotation = null;
         currentAreaBetweenTrace = null; // Clear area between trace
         currentAreaBetweenAnnotation = null;
+        // Clear tangent overlays
+        currentTangentShapes = null;
+        currentTangentAnnotations = null;
         // Clear all analysis data
         currentAnalysisData.zeros = [];
         currentAnalysisData.extrema = [];
@@ -2964,6 +3102,14 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAnalysisData.derivative = '';
         currentAnalysisData.areaBetween = null; // Clear area between data
     currentAnalysisData.asymptotes = null;
+        // Remove tangent overlays from current layout immediately
+        try {
+            if (myChart && myChart.layout) {
+                const filteredShapes = (myChart.layout.shapes || []).filter(s => !s.__tangentTool);
+                const filteredAnns = (myChart.layout.annotations || []).filter(a => !a.__tangentTool);
+                Plotly.relayout(myChart, { shapes: filteredShapes, annotations: filteredAnns });
+            }
+        } catch(_) {}
         // Reset panel but zostaw widoczny (pusty placeholder)
         const insightsToggle = document.getElementById('insightsToggle');
         if (analysisResultsContent) {
@@ -3080,11 +3226,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const intersectionsCheck = document.getElementById('intersectionsCheckbox');
             const derivativeCheck = document.getElementById('derivativePlotCheckbox');
             const inflectionsCheck = document.getElementById('inflectionsCheckbox');
+            const tangentCheck = document.getElementById('tangentToolCheckbox');
             if (zerosCheck) zerosCheck.checked = false;
             if (extremaCheck) extremaCheck.checked = false;
             if (intersectionsCheck) intersectionsCheck.checked = false;
             if (derivativeCheck) derivativeCheck.checked = false;
             if (inflectionsCheck) inflectionsCheck.checked = false;
+            if (tangentCheck) tangentCheck.checked = false;
             // (label toggle removed)
 
             // Zsynchronizuj przełączniki w panelu fullscreen (jeśli aktywny)
@@ -3129,6 +3277,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (inflectionsCheck) inflectionsCheck.checked = false;
             const asymCheck = document.getElementById('asymptotesCheckbox');
             if (asymCheck) asymCheck.checked = false;
+            const tanCheck = document.getElementById('tangentToolCheckbox');
+            if (tanCheck) tanCheck.checked = false;
             // label checkbox removed
             
             // Reset integral bounds to defaults
@@ -3197,6 +3347,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const asymptotesCheckbox = document.getElementById('asymptotesCheckbox');
     if (asymptotesCheckbox) {
         asymptotesCheckbox.addEventListener('change', () => {
+            plotButton.click();
+        });
+    }
+    const tangentToolCheckbox = document.getElementById('tangentToolCheckbox');
+    if (tangentToolCheckbox) {
+        tangentToolCheckbox.addEventListener('change', () => {
+            if (!tangentToolCheckbox.checked) {
+                // Remove tangent shapes/annotations immediately
+                try {
+                    if (myChart && myChart.layout) {
+                        const filteredShapes = (myChart.layout.shapes || []).filter(s => !s.__tangentTool);
+                        const filteredAnns = (myChart.layout.annotations || []).filter(a => !a.__tangentTool);
+                        Plotly.relayout(myChart, { shapes: filteredShapes, annotations: filteredAnns });
+                    }
+                } catch(_) {}
+                currentTangentShapes = null;
+                currentTangentAnnotations = null;
+            }
+            // Re-render to sync layout and FS dock state
             plotButton.click();
         });
     }
