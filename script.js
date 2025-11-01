@@ -1,7 +1,7 @@
 // Global variables for data traces
 let loadedDataTrace = null; // Trace dla importowanych danych 2D (CSV/API)
 let loadedData3DTrace = null; // Trace dla importowanych danych 3D (CSV/API)
-let currentAnalysisData = { zeros: [], extrema: [], inflections: [], intersections: [], integral: null, derivative: '', areaBetween: null }; // Initialize early for 3D access
+let currentAnalysisData = { zeros: [], extrema: [], inflections: [], intersections: [], integral: null, derivative: '', areaBetween: null, asymptotes: null }; // Initialize early for 3D access
 
 // History management
 let plotHistory = [];
@@ -384,6 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fsInflections = document.getElementById('fsInflections');
     const fsIntersections = document.getElementById('fsIntersections');
     const fsDerivative = document.getElementById('fsDerivative');
+    const fsAsymptotes = document.getElementById('fsAsymptotes');
     const fsLegend = document.getElementById('fsLegend');
     const fsGrid = document.getElementById('fsGrid');
     const fsZeroLines = document.getElementById('fsZeroLines');
@@ -1295,24 +1296,28 @@ document.addEventListener('DOMContentLoaded', () => {
             setLabelVis(fsInflections, true);
             setLabelVis(fsIntersections, true);
             setLabelVis(fsDerivative, true);
+            setLabelVis(fsAsymptotes, true);
         } else if (mode === 'parametric') {
             setLabelVis(fsZeros, false);
             setLabelVis(fsExtrema, false);
             setLabelVis(fsInflections, false);
             setLabelVis(fsIntersections, false);
             setLabelVis(fsDerivative, true);
+            setLabelVis(fsAsymptotes, false);
         } else if (mode === 'polar') {
             setLabelVis(fsZeros, false);
             setLabelVis(fsExtrema, false);
             setLabelVis(fsInflections, false);
             setLabelVis(fsIntersections, false);
             setLabelVis(fsDerivative, true);
+            setLabelVis(fsAsymptotes, false);
         } else if (mode === '3d') {
             setLabelVis(fsZeros, false);
             setLabelVis(fsExtrema, false);
             setLabelVis(fsInflections, false);
             setLabelVis(fsIntersections, false);
             setLabelVis(fsDerivative, false);
+            setLabelVis(fsAsymptotes, false);
         }
     }
 
@@ -1561,6 +1566,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fsInflections) fsInflections.checked = !!document.getElementById('inflectionsCheckbox')?.checked;
         if (fsIntersections) fsIntersections.checked = !!document.getElementById('intersectionsCheckbox')?.checked;
         if (fsDerivative) fsDerivative.checked = !!document.getElementById('derivativePlotCheckbox')?.checked;
+        if (fsAsymptotes) fsAsymptotes.checked = !!document.getElementById('asymptotesCheckbox')?.checked;
     }
     function toggleMainCheckbox(id, checked) {
         const el = document.getElementById(id);
@@ -1575,7 +1581,8 @@ document.addEventListener('DOMContentLoaded', () => {
         [fsExtrema, 'extremaCheckbox'],
         [fsInflections, 'inflectionsCheckbox'],
         [fsIntersections, 'intersectionsCheckbox'],
-        [fsDerivative, 'derivativePlotCheckbox']
+        [fsDerivative, 'derivativePlotCheckbox'],
+        [fsAsymptotes, 'asymptotesCheckbox']
     ].forEach(([el, id]) => {
         if (el) el.addEventListener('change', () => toggleMainCheckbox(id, el.checked));
     });
@@ -1793,6 +1800,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz pochodną f'(x)");
             }
+            const asymCk = document.getElementById('asymptotesCheckbox');
+            if (asymCk) asymCk.parentElement.style.display = 'block';
             if (integralControls) {
                 integralControls.style.display = 'block';
                 updateIntegralLabel(mode);
@@ -1810,6 +1819,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz dx/dt, dy/dt");
             }
+            const asymCk = document.getElementById('asymptotesCheckbox');
+            if (asymCk) asymCk.parentElement.style.display = 'none';
             if (integralControls) {
                 integralControls.style.display = 'block';
                 updateIntegralLabel(mode);
@@ -1827,6 +1838,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 derivativePlotCheckbox.parentElement.style.display = 'block';
                 updateDerivativeLabel(derivativePlotCheckbox, "Rysuj/licz dr/dθ");
             }
+            const asymCk2 = document.getElementById('asymptotesCheckbox');
+            if (asymCk2) asymCk2.parentElement.style.display = 'none';
             if (integralControls) {
                 integralControls.style.display = 'block';
                 updateIntegralLabel(mode);
@@ -1841,6 +1854,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (inflectionsCheckbox) inflectionsCheckbox.parentElement.style.display = 'none';
             if (inflectionsQualityWrap) inflectionsQualityWrap.style.display = 'none';
             if (derivativePlotCheckbox) derivativePlotCheckbox.parentElement.style.display = 'none';
+            const asymCk3 = document.getElementById('asymptotesCheckbox');
+            if (asymCk3) asymCk3.parentElement.style.display = 'none';
             if (integralControls) integralControls.style.display = 'none';
             if (betweenCurvesControls) betweenCurvesControls.style.display = 'none';
         }
@@ -1991,7 +2006,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayAnalysisResults() {
         const insightsToggle = document.getElementById('insightsToggle');
         const fsAnalysisEl = document.getElementById('fsAnalysisResultsContent');
-    const { zeros, extrema, inflections, integral, intersections, derivative } = currentAnalysisData;
+    const { zeros, extrema, inflections, integral, intersections, derivative, asymptotes } = currentAnalysisData;
         const parts = [];
         
         // Display derivative formulas based on mode
@@ -2046,6 +2061,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (intersections && intersections.length > 0) {
             const intersectionsList = intersections.map(p => `(${p.x.toFixed(4)}, ${p.y.toFixed(4)})`).join(', ');
             parts.push(`<div style="margin-bottom:12px;line-height:1.8;"><strong style="font-size:14px;color:#1976d2;">✖️ Punkty przecięcia:</strong><br><span style="font-size:13px;color:#37474f;">${intersectionsList}</span></div>`);
+        }
+
+        // Vertical asymptotes
+        if (asymptotes && Array.isArray(asymptotes.vertical) && asymptotes.vertical.length > 0) {
+            try {
+                // Format values; keep up to 6 decimals
+                const list = asymptotes.vertical
+                    .filter(v => isFinite(v))
+                    .sort((a,b) => a - b)
+                    .map(v => `x = ${Number(v).toFixed(6)}`)
+                    .join(', ');
+                parts.push(`<div style="margin-bottom:12px;line-height:1.8;"><strong style="font-size:14px;color:#455a64;">➗ Asymptoty pionowe:</strong><br><span style="font-size:13px;color:#37474f;">${list}</span></div>`);
+            } catch(_) { /* ignore formatting errors */ }
         }
         
         if (integral !== null && integral !== undefined) {
@@ -2272,6 +2300,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAnalysisData.intersections = resultPayload.intersections || [];
             currentAnalysisData.inflections = resultPayload.inflections || [];
             currentAnalysisData.derivative = resultPayload.derivative || '';
+            currentAnalysisData.asymptotes = resultPayload.asymptotes || null;
             displayAnalysisResults();
 
             const xMin = parseNumberInput(xMinInput.value);
@@ -2434,6 +2463,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (!resultPayload.polar && currentAnalysisData.integral && currentIntegralAnnotations) {
                 layout.annotations = (layout.annotations || []).concat(currentIntegralAnnotations);
+            }
+
+            // Add vertical asymptotes as dashed lines if provided
+            if (resultPayload.mode === 'cartesian' && resultPayload.asymptotes && Array.isArray(resultPayload.asymptotes.vertical) && resultPayload.asymptotes.vertical.length) {
+                const aShapes = resultPayload.asymptotes.vertical
+                    .filter(v => isFinite(v))
+                    .map(vx => ({
+                        type: 'line',
+                        xref: 'x', yref: 'paper',
+                        x0: vx, x1: vx, y0: 0, y1: 1,
+                        line: { color: t.axis || '#9e9e9e', width: 1.5, dash: 'dash' },
+                        layer: 'above'
+                    }));
+                if (aShapes.length) layout.shapes = (layout.shapes || []).concat(aShapes);
             }
 
             // Add centered label for area between curves, if present
@@ -2841,6 +2884,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAnalysisData.integral = null;
         currentAnalysisData.derivative = '';
         currentAnalysisData.areaBetween = null; // Clear area between data
+    currentAnalysisData.asymptotes = null;
         // Reset panel but zostaw widoczny (pusty placeholder)
         const insightsToggle = document.getElementById('insightsToggle');
         if (analysisResultsContent) {
@@ -3004,6 +3048,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (intersectionsCheck) intersectionsCheck.checked = false;
             if (derivativeCheck) derivativeCheck.checked = false;
             if (inflectionsCheck) inflectionsCheck.checked = false;
+            const asymCheck = document.getElementById('asymptotesCheckbox');
+            if (asymCheck) asymCheck.checked = false;
             // label checkbox removed
             
             // Reset integral bounds to defaults
@@ -3066,6 +3112,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const intersectionsCheckbox = document.getElementById('intersectionsCheckbox');
     if (intersectionsCheckbox) {
         intersectionsCheckbox.addEventListener('change', () => {
+            plotButton.click();
+        });
+    }
+    const asymptotesCheckbox = document.getElementById('asymptotesCheckbox');
+    if (asymptotesCheckbox) {
+        asymptotesCheckbox.addEventListener('change', () => {
             plotButton.click();
         });
     }
@@ -4680,6 +4732,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const intersectionsChecked = (document.getElementById('intersectionsCheckbox') || {}).checked;
                 const derivativePlotChecked = (document.getElementById('derivativePlotCheckbox') || {}).checked;
                 const inflectionsChecked = (document.getElementById('inflectionsCheckbox') || {}).checked;
+                const asymptotesChecked = (document.getElementById('asymptotesCheckbox') || {}).checked;
                 // Build payload depending on mode
                 const basePayload = {
                     xMin, xMax, yMin, yMax,
@@ -4690,7 +4743,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     calculateIntersections: Boolean(intersectionsChecked),
                     scope: collectScope(),
                     calculateDerivativePlot: Boolean(derivativePlotChecked),
-                    calculateInflections: Boolean(inflectionsChecked)
+                    calculateInflections: Boolean(inflectionsChecked),
+                    calculateAsymptotes: Boolean(asymptotesChecked)
                 };
 
                 let payload = Object.assign({}, basePayload);

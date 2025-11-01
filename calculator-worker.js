@@ -390,6 +390,68 @@ function detectInflectionPoints(compiled, xMin, xMax, scope = {}, options = {}) 
 	return results;
 }
 
+// Detect vertical asymptotes from sampled data by finding invalid/null regions and pinning midpoints
+function detectVerticalAsymptotesFromSamples(samples, xMin, xMax, opts = {}) {
+	if (!samples || !Array.isArray(samples.x) || !Array.isArray(samples.y)) return [];
+	const xs = samples.x;
+	const ys = samples.y;
+	const n = Math.min(xs.length, ys.length);
+	if (n < 3) return [];
+
+	const isInvalid = (y) => {
+		if (y === null || y === undefined) return true;
+		if (!isFinite(y)) return true;
+		const lim = opts.absLimit || 1e6;
+		return Math.abs(y) > lim;
+	};
+
+	const candidates = [];
+	let i = 0;
+	while (i < n) {
+		// Skip finite region
+		while (i < n && !isInvalid(ys[i])) i++;
+		if (i >= n) break;
+		// Start of invalid run
+		const runStart = i;
+		while (i < n && isInvalid(ys[i])) i++;
+		const runEnd = i - 1;
+		// Nearest finite neighbors around [runStart, runEnd]
+		let leftIdx = runStart - 1;
+		while (leftIdx >= 0 && isInvalid(ys[leftIdx])) leftIdx--;
+		let rightIdx = runEnd + 1;
+		while (rightIdx < n && isInvalid(ys[rightIdx])) rightIdx++;
+		if (leftIdx >= 0 && rightIdx < n) {
+			const xl = xs[leftIdx];
+			const xr = xs[rightIdx];
+			if (isFinite(xl) && isFinite(xr) && xl < xr) {
+				// Midpoint is a robust estimate of x where the break occurs
+				const xm = (xl + xr) / 2;
+				// Only accept if within current domain
+				if (xm > xMin && xm < xMax) candidates.push(xm);
+			}
+		}
+	}
+
+	if (!candidates.length) return [];
+	// Cluster nearby candidates (multiple nulls near same asymptote) into a single x
+	const sorted = candidates.slice().sort((a, b) => a - b);
+	const clusterTol = Math.max((opts.minStep || (Math.abs(xMax - xMin) / 500000)) * 20, Math.abs(xMax - xMin) / 2000);
+	const merged = [];
+	let acc = [sorted[0]];
+	for (let k = 1; k < sorted.length; k++) {
+		const prev = acc[acc.length - 1];
+		if (Math.abs(sorted[k] - prev) <= clusterTol) {
+			acc.push(sorted[k]);
+		} else {
+			// finalize previous cluster
+			merged.push(acc.reduce((s, v) => s + v, 0) / acc.length);
+			acc = [sorted[k]];
+		}
+	}
+	if (acc.length) merged.push(acc.reduce((s, v) => s + v, 0) / acc.length);
+	return merged;
+}
+
 // Message handler
 self.onmessage = function (ev) {
 	const msg = ev.data;
@@ -693,7 +755,16 @@ self.onmessage = function (ev) {
 			} catch (_) { inflections = []; }
 		}
 
-		self.postMessage({ type: 'result', payload: { mode: 'cartesian', samples1, samples2, intersections, zeros, extrema, inflections, derivative: derivString, derivativeSamples } });
+		// Vertical asymptotes (cartesian) on demand
+		let asymptotes = null;
+		if (msg.payload && msg.payload.calculateAsymptotes) {
+			try {
+				const vertical = detectVerticalAsymptotesFromSamples(samples1, xMin, xMax, opts) || [];
+				if (vertical && vertical.length) asymptotes = { vertical };
+			} catch (_) { asymptotes = null; }
+		}
+
+		self.postMessage({ type: 'result', payload: { mode: 'cartesian', samples1, samples2, intersections, zeros, extrema, inflections, derivative: derivString, derivativeSamples, asymptotes } });
 			return;
 		}
 
