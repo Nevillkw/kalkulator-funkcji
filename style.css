@@ -534,6 +534,8 @@ input::placeholder {
     max-height: 100%;
     overflow-y: auto; /* show scrollbar only when needed */
     overflow-x: hidden;
+    /* Wyraźna linia u dołu – koniec treści */
+    box-shadow: inset 0 -2px 0 #90caf9;
 }
 
 /* Pasek do zmiany wysokości wyników/historii - ukryty w układzie bocznym */
@@ -1235,16 +1237,21 @@ code {
 /* Analysis expanded state */
 .analysis-results.expanded {
     position: fixed !important;
-    top: 20px;
-    left: 20px;
-    right: 20px;
-    bottom: 20px;
+    /* Centered modal window */
+    top: 8vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(960px, calc(100vw - 32px));
+    height: min(80vh, calc(100vh - 32px));
     z-index: 10000 !important;
     background: white !important;
     border: 3px solid #90caf9 !important;
-    border-radius: 0;
+    border-radius: 8px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
     overflow: hidden;
+    /* Turn into a flex container so header has natural height and content fills the rest */
+    display: flex !important;
+    flex-direction: column !important;
     flex: none !important;
     box-sizing: border-box !important;
 }
@@ -1257,7 +1264,11 @@ code {
 }
 
 .analysis-results.expanded #analysisResultsContent {
-    height: calc(100% - 90px);
+    /* Fill remaining space below header without hard-coded pixels */
+    flex: 1 1 auto;
+    min-height: 0; /* allow child to shrink in flex container */
+    height: auto;
+    overflow: auto;
     padding: 16px;
 }
 
@@ -1358,8 +1369,8 @@ code {
     font-size: 13px !important;
 }
 
-/* Responsywność dla tabletów */
-@media (max-width: 768px) {
+/* Responsywność dla tabletów (przenosimy historię i wyniki pod wykres wcześniej) */
+@media (max-width: 1024px) {
     .calculator-container {
         margin: 5px;
         padding: 5px;
@@ -1400,18 +1411,20 @@ code {
         display: none !important;
     }
     
-    /* Responsive fullscreen analysis for tablets */
+    /* Modal sizing for tablets */
     .analysis-results.expanded {
-        top: 10px !important;
-        left: 10px !important;
-        width: calc(100vw - 20px) !important;
-        height: calc(100vh - 20px) !important;
+        top: 6vh !important;
+        left: 50% !important;
         right: auto !important;
         bottom: auto !important;
+        transform: translateX(-50%) !important;
+        width: min(92vw, 860px) !important;
+        height: min(84vh, calc(100vh - 24px)) !important;
         border: 2px solid #90caf9 !important;
         z-index: 9999 !important;
         box-sizing: border-box !important;
         margin: 0 !important;
+        border-radius: 8px !important;
     }
 
     .compact-input {
@@ -1469,18 +1482,20 @@ code {
         padding: 0 !important;
     }
     
-    /* Responsive fullscreen analysis for medium phones */
+    /* Modal sizing for medium phones */
     .analysis-results.expanded {
-        top: 5px !important;
-        left: 5px !important;
-        width: calc(100vw - 10px) !important;
-        height: calc(100vh - 10px) !important;
+        top: 8px !important;
+        left: 50% !important;
         right: auto !important;
         bottom: auto !important;
+        transform: translateX(-50%) !important;
+        width: calc(100vw - 12px) !important;
+        height: calc(90vh - 12px) !important;
         border: 2px solid #90caf9 !important;
         z-index: 9999 !important;
         box-sizing: border-box !important;
         margin: 0 !important;
+        border-radius: 6px !important;
     }
 }
 
@@ -1550,27 +1565,35 @@ code {
         padding: 2px !important;
     }
     
-    /* Mobile fullscreen analysis */
+    /* Small phones: modal with safe areas */
     .analysis-results.expanded {
         position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
+        top: max(env(safe-area-inset-top, 0px), 6px) !important;
+        left: 50% !important;
         right: auto !important;
         bottom: auto !important;
-        border-radius: 0 !important;
+        transform: translateX(-50%) !important;
+        width: calc(100vw - 8px) !important;
+        height: calc(88vh - 8px) !important;
+        border-radius: 6px !important;
         border: 2px solid #90caf9 !important;
         z-index: 99999 !important;
         box-sizing: border-box !important;
         margin: 0 !important;
         padding: 0 !important;
-        transform: none !important;
     }
     
-    /* Ensure parent containers don't hide the expanded panel */
+    /* Ensure backdrop + prevent background scroll when expanded */
     body:has(.analysis-results.expanded) {
-        overflow: visible !important;
+        overflow: hidden !important; /* lock scroll behind */
+    }
+    body:has(.analysis-results.expanded)::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.25);
+        z-index: 9990; /* below panel (10000) */
+        pointer-events: none; /* clicks go through to panel */
     }
     
     .calculator-container:has(.analysis-results.expanded),
@@ -1584,7 +1607,10 @@ code {
     }
     
     .analysis-results.expanded #analysisResultsContent {
-        height: calc(100% - 60px) !important;
+        /* Flex fill: no hard-coded heights on mobile */
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: auto !important;
         padding: 12px !important;
         font-size: 12px !important;
     }
@@ -1720,4 +1746,38 @@ code {
 #chartContainer:fullscreen .fs-dock.minimized,
 #chartContainer:-webkit-full-screen .fs-dock.minimized {
     display: none !important;
+}
+
+/* --- IFRAME AUTOSIZE STABILIZATION ---
+   When embedded, avoid vh-based heights to prevent feedback loops (iframe grows -> vh grows -> content grows).
+*/
+.iframe-embed .analysis-results.expanded {
+    /* Centered modal without vh-dependent height */
+    height: auto !important;
+    max-height: none !important;
+    top: 16px !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translateX(-50%) !important;
+    width: min(960px, calc(100vw - 32px)) !important;
+}
+
+@media (max-width: 1024px) {
+    .iframe-embed .analysis-results.expanded {
+        top: 12px !important;
+        width: min(92vw, 860px) !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .iframe-embed .analysis-results.expanded {
+        top: 8px !important;
+        width: calc(100vw - 12px) !important;
+    }
+    .iframe-embed .analysis-results.expanded #analysisResultsContent {
+        /* keep internal scroll when content is long */
+        max-height: 1000px !important;
+        overflow: auto !important;
+    }
 }

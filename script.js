@@ -7,6 +7,74 @@ let currentAnalysisData = { zeros: [], extrema: [], inflections: [], intersectio
 let plotHistory = [];
 const MAX_HISTORY_ITEMS = 20;
 
+// Centralized responsive layout detection (tablet and below)
+function isResponsiveLayout() {
+    try {
+        return window.matchMedia('(max-width: 1024px)').matches;
+    } catch (_) {
+        return (window.innerWidth || 0) <= 1024;
+    }
+}
+
+// Safe iframe detection (works with cross-origin)
+function isInIframe() {
+    try {
+        return window.self !== window.top;
+    } catch (e) {
+        // Cross-origin access throws -> assume inside iframe
+        return true;
+    }
+}
+
+// --- IFRAME AUTOSIZE: post height to parent when embedded ---
+function postFrameHeight(trigger) {
+    // Debounced to avoid spamming parent
+    if (!postFrameHeight._t) postFrameHeight._t = null;
+    if (!isInIframe()) return; // only when embedded
+    clearTimeout(postFrameHeight._t);
+    postFrameHeight._t = setTimeout(() => {
+        try {
+            const de = document.documentElement;
+            const b = document.body;
+            const h = Math.max(
+                de.scrollHeight, de.offsetHeight, de.clientHeight,
+                b ? b.scrollHeight : 0, b ? b.offsetHeight : 0
+            );
+            // Dedupe: only send if height changed meaningfully
+            if (typeof postFrameHeight._last === 'number') {
+                if (Math.abs(h - postFrameHeight._last) < 12) return;
+            }
+            postFrameHeight._last = h;
+            // Send message to parent; parent may filter origin
+            parent.postMessage({ type: 'kalkulator-funkcji/height', height: h, trigger: trigger || '' }, '*');
+        } catch (_) {}
+    }, 100);
+}
+
+// Observe size/DOM changes to keep iframe height in sync
+try {
+    if (isInIframe()) {
+        // Mark DOM to allow CSS overrides that avoid vh loops in iframe
+        try {
+            const mark = () => document.documentElement.classList.add('iframe-embed');
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', mark, { once: true });
+            } else { mark(); }
+        } catch(_) {}
+        if ('ResizeObserver' in window) {
+            const ro = new ResizeObserver(() => postFrameHeight('resize-observer'));
+            ro.observe(document.body);
+            ro.observe(document.documentElement);
+        }
+        const mo = new MutationObserver(() => postFrameHeight('mutation'));
+        mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+        window.addEventListener('load', () => postFrameHeight('load'));
+        window.addEventListener('resize', () => postFrameHeight('resize'));
+        // Initial kick
+        setTimeout(() => postFrameHeight('init-timeout'), 150);
+    }
+} catch(_) {}
+
 // Funkcja do renderowania wykresu 3D
 function handle3DPlot(data) {
     console.log('Otrzymane dane 3D:', data);
@@ -23,7 +91,7 @@ function handle3DPlot(data) {
     } catch(_) {}
     
     // Store derivative info if present and non-empty
-    if (data.derivative && typeof currentAnalysisData !== 'undefined') {
+        if (data.derivative && typeof currentAnalysisData !== 'undefined' && data.derivative !== '') {
         // Check if derivative has actual values
         if ((data.derivative.dzDx && data.derivative.dzDy) || 
             (typeof data.derivative === 'string' && data.derivative.trim() !== '')) {
@@ -79,8 +147,8 @@ function handle3DPlot(data) {
         traces.push(loadedData3DTrace);
     }
 
-    // Check if mobile device (small screen)
-    const isMobile = window.innerWidth <= 768;
+    // Check if responsive layout (tablet and below)
+    const isMobile = isResponsiveLayout();
     
     const layout = {
         title: { text: 'Wykres powierzchni 3D', font: { size: 18, weight: 600 } },
@@ -115,8 +183,8 @@ function handle3DPlot(data) {
             aspectmode: 'cube',
             bgcolor: t3.plot
         },
-        autosize: true,
-        margin: { l: 0, r: 0, b: 0, t: 20 },
+    autosize: true,
+    margin: isMobile ? { l: 20, r: 20, b: 20, t: 20 } : { l: 60, r: 60, b: 60, t: 60 },
         paper_bgcolor: t3.paper,
         plot_bgcolor: t3.plot,
         font: { color: t3.font }
@@ -349,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function updateSidebarMaxHeight(){
             try {
                 // Nie rób nic gdy layout mobilny układa kolumny pionowo
-                const mq = window.matchMedia('(max-width: 768px)');
+                const mq = window.matchMedia('(max-width: 1024px)');
                 if (mq.matches) { if (sidebar) sidebar.style.maxHeight = ''; return; }
                 if (!sidebar || !chart) return;
                 let total = chart.getBoundingClientRect().height;
@@ -376,6 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 root.style.setProperty('--insights-height', val);
                 try { localStorage.setItem('insightsHeight', val); } catch(_) {}
                 updateSidebarMaxHeight();
+                try { postFrameHeight('insights-resize'); } catch(_) {}
                 ev.preventDefault();
             }
             function onUp(){
@@ -397,9 +466,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Function to update axis titles - always hide them
-        function updateAxisTitles() {
+    function updateAxisTitles() {
             if (myChart && myChart.layout) {
-                const isMobile = window.innerWidth <= 768;
+        const isMobile = isResponsiveLayout();
                 const updates = {};
                 
                 // Hide all axis titles for maximum chart space
@@ -423,10 +492,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 
-                // Update margins - use minimal margins for all screen sizes
+                // Update margins - minimal on mobile/tablet, larger on desktop
                 updates['margin'] = myChart.layout.scene ? 
-                    { l: 0, r: 0, b: 0, t: 20 } : 
-                    { t: 20, l: 20, r: 10, b: 30 };
+                    (isMobile ? { l: 20, r: 20, b: 20, t: 20 } : { l: 60, r: 60, b: 60, t: 60 }) : 
+                    (isMobile ? { t: 20, l: 20, r: 10, b: 30 } : { t: 20, l: 40, r: 20, b: 40 });
                 
                 if (Object.keys(updates).length > 0) {
                     try {
@@ -438,12 +507,43 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Aktualizuj po zmianach układu
-        ['load','resize'].forEach(evt => window.addEventListener(evt, () => { 
+        // Scentralizowana obsługa zmian responsywnych (synchronizacja CSS/JS)
+        function handleResponsiveChange() {
             applyStoredInsightsHeight(); 
             updateSidebarMaxHeight(); 
-            updateAxisTitles(); 
-        }));
+            updateAxisTitles();
+            // Wymuś przeliczenie rozmiaru wykresu po zmianie układu
+            const chartDiv = document.getElementById('myChart');
+            if (chartDiv && window.Plotly) {
+                setTimeout(() => {
+                    try {
+                        window.Plotly.Plots.resize(chartDiv);
+                        // Dostosuj marginesy wykresu do aktualnego układu
+                        const mobile = isResponsiveLayout();
+                        const newLayout = {
+                            margin: mobile ? { l: 20, r: 20, t: 20, b: 20 } : { l: 60, r: 60, t: 60, b: 60 }
+                        };
+                        // Jeśli to 2D wykres, zastosuj tylko margin gdy brak sceny 3D
+                        if (!myChart || !myChart.layout || !myChart.layout.scene) {
+                            window.Plotly.relayout(chartDiv, newLayout);
+                        }
+                        try { postFrameHeight('responsive-change'); } catch(_) {}
+                    } catch (e) { /* ignore */ }
+                }, 120);
+            }
+        }
+
+        ['load','resize'].forEach(evt => window.addEventListener(evt, handleResponsiveChange));
+        // Nasłuchuj bezpośrednio na zmianę media query 1024px (tablet)
+        try {
+            const mq1024 = window.matchMedia('(max-width: 1024px)');
+            if (mq1024 && mq1024.addEventListener) {
+                mq1024.addEventListener('change', handleResponsiveChange);
+            } else if (mq1024 && mq1024.addListener) {
+                // Safari/legacy
+                mq1024.addListener(handleResponsiveChange);
+            }
+        } catch(_) {}
         if (insightsDetails) {
             insightsDetails.addEventListener('toggle', () => { applyStoredInsightsHeight(); updateSidebarMaxHeight(); });
         }
@@ -491,6 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (window.Plotly && document.getElementById('myChart')) {
                     window.Plotly.Plots.resize(document.getElementById('myChart'));
                 }
+                try { postFrameHeight('results-toggle'); } catch(_) {}
             }, 350);
         });
     }
@@ -511,6 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 analysisExpand.innerHTML = '✕';
                 analysisExpand.title = 'Zamknij pełny ekran';
             }
+            try { postFrameHeight('analysis-expand-toggle'); } catch(_) {}
         });
 
         // Close on Escape key
@@ -519,6 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 analysisResults.classList.remove('expanded');
                 analysisExpand.innerHTML = '⛶';
                 analysisExpand.title = 'Rozwiń analizę';
+                try { postFrameHeight('analysis-escape'); } catch(_) {}
             }
         });
     }
@@ -2221,8 +2324,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return val.toFixed(1);
             }
 
-            // Check if mobile device (small screen)
-            const isMobile = window.innerWidth <= 768;
+            // Check if responsive layout (tablet and below)
+            const isMobile = isResponsiveLayout();
             
             // Default cartesian layout (theme-aware)
             let layout = {
@@ -2358,6 +2461,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             Plotly.newPlot(plotDiv, traces, layout, config).then(gd => {
                 myChart = gd;
+                try { postFrameHeight('plot3d-new'); } catch(_) {}
                 // zainicjalizuj HUD zakresów
                 updateFsRangeFromLayout(gd.layout);
                 // zsynchronizuj lewy panel gdyby fullscreen był już aktywny
@@ -2390,6 +2494,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Nie zapisujemy zakresów do localStorage - zawsze startujemy z domyślnymi
                         // Jeśli fullscreen, zaktualizuj pola zakresu w docku
                         try { syncFsInputsFromMain(); } catch(_) {}
+                        try { postFrameHeight('plot3d-relayout'); } catch(_) {}
                     } catch (e) { console.warn('Błąd podczas aktualizacji zakresów:', e); }
                 });
 
