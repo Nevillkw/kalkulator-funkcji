@@ -1,7 +1,7 @@
 // Global variables for data traces
 let loadedDataTrace = null; // Trace dla importowanych danych 2D (CSV/API)
 let loadedData3DTrace = null; // Trace dla importowanych danych 3D (CSV/API)
-let currentAnalysisData = { zeros: [], extrema: [], inflections: [], intersections: [], integral: null, derivative: '', areaBetween: null, asymptotes: null }; // Initialize early for 3D access
+let currentAnalysisData = { zeros: [], extrema: [], inflections: [], intersections: [], integral: null, derivative: '', areaBetween: null, asymptotes: null, monotonicityIntervals: [], concavityIntervals: [] }; // Initialize early for 3D access
 
 // History management
 let plotHistory = [];
@@ -427,6 +427,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const fsDerivative = document.getElementById('fsDerivative');
     const fsAsymptotes = document.getElementById('fsAsymptotes');
     const fsTangent = document.getElementById('fsTangent');
+    const fsParamClick = document.getElementById('fsParamClick');
+    const fsPolarClick = document.getElementById('fsPolarClick');
+    const fsMonotonicity = document.getElementById('fsMonotonicity');
+    const fsConcavity = document.getElementById('fsConcavity');
     const fsLegend = document.getElementById('fsLegend');
     const fsGrid = document.getElementById('fsGrid');
     const fsZeroLines = document.getElementById('fsZeroLines');
@@ -1368,6 +1372,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setLabelVis(fsIntersections, true);
             setLabelVis(fsDerivative, true);
             setLabelVis(fsTangent, true);
+            setLabelVis(fsParamClick, false);
+            setLabelVis(fsPolarClick, false);
+            setLabelVis(fsMonotonicity, true);
+            setLabelVis(fsConcavity, true);
             setLabelVis(fsAsymptotes, true);
         } else if (mode === 'parametric') {
             setLabelVis(fsZeros, false);
@@ -1376,6 +1384,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setLabelVis(fsIntersections, false);
             setLabelVis(fsDerivative, true);
             setLabelVis(fsTangent, false);
+            setLabelVis(fsParamClick, true);
+            setLabelVis(fsPolarClick, false);
+            setLabelVis(fsMonotonicity, false);
+            setLabelVis(fsConcavity, false);
             setLabelVis(fsAsymptotes, false);
         } else if (mode === 'polar') {
             setLabelVis(fsZeros, false);
@@ -1384,6 +1396,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setLabelVis(fsIntersections, false);
             setLabelVis(fsDerivative, true);
             setLabelVis(fsTangent, false);
+            setLabelVis(fsParamClick, false);
+            setLabelVis(fsPolarClick, false);
+            setLabelVis(fsMonotonicity, false);
+            setLabelVis(fsConcavity, false);
             setLabelVis(fsAsymptotes, false);
         } else if (mode === '3d') {
             setLabelVis(fsZeros, false);
@@ -1392,6 +1408,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setLabelVis(fsIntersections, false);
             setLabelVis(fsDerivative, false);
             setLabelVis(fsTangent, false);
+            setLabelVis(fsParamClick, false);
+            setLabelVis(fsPolarClick, false);
+            setLabelVis(fsMonotonicity, false);
+            setLabelVis(fsConcavity, false);
             setLabelVis(fsAsymptotes, false);
         }
     }
@@ -1642,6 +1662,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fsIntersections) fsIntersections.checked = !!document.getElementById('intersectionsCheckbox')?.checked;
         if (fsDerivative) fsDerivative.checked = !!document.getElementById('derivativePlotCheckbox')?.checked;
         if (fsTangent) fsTangent.checked = !!document.getElementById('tangentToolCheckbox')?.checked;
+        if (fsParamClick) fsParamClick.checked = !!document.getElementById('paramClickToolCheckbox')?.checked;
+    if (fsPolarClick) fsPolarClick.checked = !!document.getElementById('polarClickToolCheckbox')?.checked;
+    if (fsMonotonicity) fsMonotonicity.checked = !!document.getElementById('monotonicityCheckbox')?.checked;
+    if (fsConcavity) fsConcavity.checked = !!document.getElementById('concavityCheckbox')?.checked;
         if (fsAsymptotes) fsAsymptotes.checked = !!document.getElementById('asymptotesCheckbox')?.checked;
     }
     function toggleMainCheckbox(id, checked) {
@@ -1659,6 +1683,10 @@ document.addEventListener('DOMContentLoaded', () => {
         [fsIntersections, 'intersectionsCheckbox'],
         [fsDerivative, 'derivativePlotCheckbox'],
         [fsTangent, 'tangentToolCheckbox'],
+        [fsParamClick, 'paramClickToolCheckbox'],
+        [fsPolarClick, 'polarClickToolCheckbox'],
+        [fsMonotonicity, 'monotonicityCheckbox'],
+        [fsConcavity, 'concavityCheckbox'],
         [fsAsymptotes, 'asymptotesCheckbox']
     ].forEach(([el, id]) => {
         if (el) el.addEventListener('change', () => toggleMainCheckbox(id, el.checked));
@@ -1879,6 +1907,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const tangCk = document.getElementById('tangentToolCheckbox');
             if (tangCk) tangCk.parentElement.style.display = 'block';
+            const paramCk = document.getElementById('paramClickToolCheckbox');
+            if (paramCk) paramCk.parentElement.style.display = 'none';
+            const polarCk = document.getElementById('polarClickToolCheckbox');
+            if (polarCk) polarCk.parentElement.style.display = 'none';
             const asymCk = document.getElementById('asymptotesCheckbox');
             if (asymCk) asymCk.parentElement.style.display = 'block';
             if (integralControls) {
@@ -1900,6 +1932,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const tangCk = document.getElementById('tangentToolCheckbox');
             if (tangCk) tangCk.parentElement.style.display = 'none';
+            const paramCk = document.getElementById('paramClickToolCheckbox');
+            if (paramCk) paramCk.parentElement.style.display = 'block';
+            const polarCk = document.getElementById('polarClickToolCheckbox');
+            if (polarCk) polarCk.parentElement.style.display = 'none';
             const asymCk = document.getElementById('asymptotesCheckbox');
             if (asymCk) asymCk.parentElement.style.display = 'none';
             if (integralControls) {
@@ -1921,6 +1957,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const tangCk2 = document.getElementById('tangentToolCheckbox');
             if (tangCk2) tangCk2.parentElement.style.display = 'none';
+            const paramCk2 = document.getElementById('paramClickToolCheckbox');
+            if (paramCk2) paramCk2.parentElement.style.display = 'none';
+            const polarCk2 = document.getElementById('polarClickToolCheckbox');
+            if (polarCk2) polarCk2.parentElement.style.display = 'block';
             const asymCk2 = document.getElementById('asymptotesCheckbox');
             if (asymCk2) asymCk2.parentElement.style.display = 'none';
             if (integralControls) {
@@ -1939,6 +1979,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (derivativePlotCheckbox) derivativePlotCheckbox.parentElement.style.display = 'none';
             const tangCk3 = document.getElementById('tangentToolCheckbox');
             if (tangCk3) tangCk3.parentElement.style.display = 'none';
+            const paramCk3 = document.getElementById('paramClickToolCheckbox');
+            if (paramCk3) paramCk3.parentElement.style.display = 'none';
+            const polarCk3 = document.getElementById('polarClickToolCheckbox');
+            if (polarCk3) polarCk3.parentElement.style.display = 'none';
             const asymCk3 = document.getElementById('asymptotesCheckbox');
             if (asymCk3) asymCk3.parentElement.style.display = 'none';
             if (integralControls) integralControls.style.display = 'none';
@@ -2062,6 +2106,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Tangent/Normal overlays
     let currentTangentShapes = null; // array of 1-2 Plotly shape objects
     let currentTangentAnnotations = null; // optional array with small equation/point info
+    // Parametric click overlays
+    let currentParamClickShapes = null;
+    let currentParamClickAnnotations = null;
+    // Polar click overlays
+    let currentPolarClickShapes = null; // deprecated (shapes don't render on polar)
+    let currentPolarClickAnnotations = null; // deprecated for polar
+    let currentPolarClickTraces = null; // scatterpolar traces for radial/tangent + label
+    // Monotonicity/Concavity overlays (cartesian)
+    let currentMonotonicityShapes = null;
+    let currentConcavityShapes = null;
 
     // Calculator worker - handles heavy computations
     let calcWorker = null;
@@ -2144,6 +2198,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (inflections && inflections.length > 0) {
             const inflList = inflections.map(p => `(${p.x.toFixed(4)}, ${p.y.toFixed(4)})`).join(', ');
             parts.push(`<div style="margin-bottom:12px;line-height:1.8;"><strong style="font-size:14px;color:#6a1b9a;">🔄 Punkty przegięcia:</strong><br><span style="font-size:13px;color:#4527a0;">${inflList}</span></div>`);
+        }
+
+        // Intervals of monotonicity and concavity (shown when respective toggles are on)
+        const monoToggle = document.getElementById('monotonicityCheckbox');
+        const concToggle = document.getElementById('concavityCheckbox');
+        const fmtInt = (i) => `[${Number(i.x0).toFixed(4)}, ${Number(i.x1).toFixed(4)}]`;
+        if (monoToggle && monoToggle.checked && Array.isArray(currentAnalysisData.monotonicityIntervals) && currentAnalysisData.monotonicityIntervals.length) {
+            const inc = currentAnalysisData.monotonicityIntervals.filter(i => i.type === 'rosnąca');
+            const dec = currentAnalysisData.monotonicityIntervals.filter(i => i.type === 'malejąca');
+            const incTxt = inc.length ? inc.map(fmtInt).join(', ') : '—';
+            const decTxt = dec.length ? dec.map(fmtInt).join(', ') : '—';
+            parts.push(`<div style="margin-bottom:12px;line-height:1.8;"><strong style="font-size:14px;color:#2e7d32;">📈 Przedziały monotoniczności:</strong><br><span style="font-size:13px;color:#1b5e20;">Rosnąca: ${incTxt}</span><br><span style="font-size:13px;color:#b71c1c;">Malejąca: ${decTxt}</span></div>`);
+        }
+        if (concToggle && concToggle.checked && Array.isArray(currentAnalysisData.concavityIntervals) && currentAnalysisData.concavityIntervals.length) {
+            const up = currentAnalysisData.concavityIntervals.filter(i => i.type.startsWith('wypukła'));
+            const down = currentAnalysisData.concavityIntervals.filter(i => i.type.startsWith('wklęsła'));
+            const upTxt = up.length ? up.map(fmtInt).join(', ') : '—';
+            const downTxt = down.length ? down.map(fmtInt).join(', ') : '—';
+            parts.push(`<div style="margin-bottom:12px;line-height:1.8;"><strong style="font-size:14px;color:#6a4fb3;">🟪 Przedziały wypukłości:</strong><br><span style="font-size:13px;color:#4527a0;">W górę (f″>0): ${upTxt}</span><br><span style="font-size:13px;color:#e65100;">W dół (f″<0): ${downTxt}</span></div>`);
         }
         
         if (intersections && intersections.length > 0) {
@@ -2398,6 +2471,98 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAnalysisData.inflections = resultPayload.inflections || [];
             currentAnalysisData.derivative = resultPayload.derivative || '';
             currentAnalysisData.asymptotes = resultPayload.asymptotes || null;
+            // Compute intervals for monotonicity and concavity (cartesian only) for analysis panel
+            currentAnalysisData.monotonicityIntervals = [];
+            currentAnalysisData.concavityIntervals = [];
+            try {
+                if (!resultPayload.polar && resultPayload.mode === 'cartesian') {
+                    const xs = (resultPayload.samples1 && resultPayload.samples1.x) || [];
+                    const ys = (resultPayload.samples1 && resultPayload.samples1.y) || [];
+                    if (Array.isArray(xs) && Array.isArray(ys) && xs.length >= 3 && xs.length === ys.length) {
+                        const EPS = 1e-10;
+                        // helper to build segments from sign array
+                        const mkSegments = (arrSign) => {
+                            const segs = [];
+                            let sPrev = null, iStart = 0;
+                            for (let i = 0; i < arrSign.length; i++) {
+                                const s = arrSign[i];
+                                if (sPrev === null) { sPrev = s; iStart = i; continue; }
+                                if (s !== sPrev) {
+                                    const a = Math.max(0, iStart);
+                                    const b = Math.max(a+1, i);
+                                    const x0 = xs[a];
+                                    const x1 = xs[b];
+                                    if (isFinite(x0) && isFinite(x1) && x1 > x0 && sPrev !== 0) segs.push({ x0, x1, sign: sPrev });
+                                    sPrev = s; iStart = i;
+                                }
+                            }
+                            const a = Math.max(0, iStart);
+                            const b = arrSign.length - 1;
+                            if (b > a) {
+                                const x0 = xs[a];
+                                const x1 = xs[b];
+                                const sTail = arrSign[b-1] ?? 0;
+                                if (isFinite(x0) && isFinite(x1) && x1 > x0 && sTail !== 0) segs.push({ x0, x1, sign: sTail });
+                            }
+                            return segs;
+                        };
+                        // Monotonicity from first-derivative sign
+                        const signs = new Array(xs.length).fill(0);
+                        for (let i = 1; i < xs.length - 1; i++) {
+                            const dx = xs[i+1] - xs[i-1];
+                            const dy = ys[i+1] - ys[i-1];
+                            const m = dy / (Math.abs(dx) > EPS ? dx : (dx >= 0 ? EPS : -EPS));
+                            signs[i] = (isFinite(m) && Math.abs(m) > 1e-9) ? (m > 0 ? 1 : -1) : 0;
+                        }
+                        const monoSegs = mkSegments(signs).map(seg => ({ x0: seg.x0, x1: seg.x1, type: seg.sign > 0 ? 'rosnąca' : 'malejąca' }));
+                        currentAnalysisData.monotonicityIntervals = monoSegs;
+
+                        // Concavity: prefer segmentation by inflection points
+                        const signs2 = new Array(xs.length).fill(0);
+                        for (let i = 1; i < xs.length - 1; i++) {
+                            const dx1 = xs[i] - xs[i-1];
+                            const dx2 = xs[i+1] - xs[i];
+                            if (!(Math.abs(dx1) > EPS && Math.abs(dx2) > EPS)) { signs2[i] = 0; continue; }
+                            const s0 = (ys[i] - ys[i-1]) / dx1;
+                            const s1 = (ys[i+1] - ys[i]) / dx2;
+                            const denom = 0.5 * (dx1 + dx2);
+                            const ypp = (s1 - s0) / (Math.abs(denom) > EPS ? denom : EPS);
+                            signs2[i] = (isFinite(ypp) && Math.abs(ypp) > 1e-9) ? (ypp > 0 ? 1 : -1) : 0;
+                        }
+                        const inflXs = Array.isArray(resultPayload.inflections) && resultPayload.inflections.length
+                            ? resultPayload.inflections.map(p => p.x).filter(v => isFinite(v)).sort((a,b)=>a-b)
+                            : [];
+                        const concIntervals = [];
+                        if (inflXs.length) {
+                            const findRightIndex = (x) => {
+                                let lo = 0, hi = xs.length - 2, ans = 1;
+                                while (lo <= hi) { const mid = (lo + hi) >> 1; if (xs[mid] <= x) { ans = mid + 1; lo = mid + 1; } else { hi = mid - 1; } }
+                                if (ans < 1) ans = 1; if (ans > xs.length - 1) ans = xs.length - 1; return ans;
+                            };
+                            const boundaries = Array.from(new Set(inflXs
+                                .filter(x => x > xs[0] + EPS && x < xs[xs.length-1] - EPS)
+                                .map(findRightIndex))).sort((a,b)=>a-b);
+                            let start = 0;
+                            const pushInterval = (i0, i1) => {
+                                if (i1 <= i0) return;
+                                const x0 = xs[i0]; const x1 = xs[i1];
+                                if (!(isFinite(x0) && isFinite(x1) && x1 > x0)) return;
+                                let sum = 0, cnt = 0;
+                                for (let k = Math.max(1,i0); k < Math.min(xs.length-1, i1); k++) { const s = signs2[k]; if (s !== 0) { sum += s; cnt++; } }
+                                if (cnt === 0) return;
+                                const sgn = sum > 0 ? 1 : (sum < 0 ? -1 : 0);
+                                if (sgn === 0) return;
+                                concIntervals.push({ x0, x1, type: sgn > 0 ? 'wypukła w górę (f″>0)' : 'wklęsła (f″<0)' });
+                            };
+                            boundaries.forEach(b => { pushInterval(start, b); start = b; });
+                            pushInterval(start, xs.length - 1);
+                        } else {
+                            mkSegments(signs2).forEach(seg => { concIntervals.push({ x0: seg.x0, x1: seg.x1, type: seg.sign > 0 ? 'wypukła w górę (f″>0)' : 'wklęsła (f″<0)' }); });
+                        }
+                        currentAnalysisData.concavityIntervals = concIntervals;
+                    }
+                }
+            } catch(_) {}
             displayAnalysisResults();
 
             const xMin = parseNumberInput(xMinInput.value);
@@ -2595,6 +2760,157 @@ document.addEventListener('DOMContentLoaded', () => {
             if (resultPayload.mode === 'cartesian' && !resultPayload.polar && tangEnabledNow && currentTangentAnnotations && currentTangentAnnotations.length) {
                 layout.annotations = (layout.annotations || []).concat(currentTangentAnnotations);
             }
+            // Add parametric click overlays if present and tool enabled
+            const paramClickCk = document.getElementById('paramClickToolCheckbox');
+            const paramEnabled = paramClickCk ? paramClickCk.checked : false;
+            if (resultPayload.mode === 'parametric' && paramEnabled && currentParamClickShapes && currentParamClickShapes.length) {
+                layout.shapes = (layout.shapes || []).concat(currentParamClickShapes);
+            }
+            if (resultPayload.mode === 'parametric' && paramEnabled && currentParamClickAnnotations && currentParamClickAnnotations.length) {
+                layout.annotations = (layout.annotations || []).concat(currentParamClickAnnotations);
+            }
+            // Add polar click overlays if present and tool enabled
+            const polarClickCk = document.getElementById('polarClickToolCheckbox');
+            const polarEnabled = polarClickCk ? polarClickCk.checked : false;
+            if (resultPayload.polar && polarEnabled && currentPolarClickTraces && currentPolarClickTraces.length) {
+                // push dedicated overlay traces for polar (shapes don't support polar axes)
+                currentPolarClickTraces.forEach(tr => traces.push(tr));
+            }
+
+            // Build and inject monotonicity/concavity overlays (cartesian only)
+            const monoEnabled = !!document.getElementById('monotonicityCheckbox')?.checked;
+            const concEnabled = !!document.getElementById('concavityCheckbox')?.checked;
+            currentMonotonicityShapes = null;
+            currentConcavityShapes = null;
+            if (resultPayload.mode === 'cartesian' && !resultPayload.polar && (monoEnabled || concEnabled)) {
+                const xs = (resultPayload.samples1 && resultPayload.samples1.x) || [];
+                const ys = (resultPayload.samples1 && resultPayload.samples1.y) || [];
+                if (Array.isArray(xs) && Array.isArray(ys) && xs.length >= 3 && xs.length === ys.length) {
+                    const mkSegments = (arrSign) => {
+                        const segs = [];
+                        let sPrev = null, iStart = 0;
+                        for (let i = 0; i < arrSign.length; i++) {
+                            const s = arrSign[i];
+                            if (sPrev === null) { sPrev = s; iStart = i; continue; }
+                            if (s !== sPrev) {
+                                const a = Math.max(0, iStart);
+                                const b = Math.max(a+1, i);
+                                // span uses sample edges
+                                const x0 = xs[a];
+                                const x1 = xs[b];
+                                if (isFinite(x0) && isFinite(x1) && x1 > x0 && sPrev !== 0) {
+                                    segs.push({ x0, x1, sign: sPrev });
+                                }
+                                sPrev = s; iStart = i;
+                            }
+                        }
+                        // tail
+                        const a = Math.max(0, iStart);
+                        const b = arrSign.length - 1;
+                        if (b > a) {
+                            const x0 = xs[a];
+                            const x1 = xs[b];
+                            const sTail = arrSign[b-1] ?? 0;
+                            if (isFinite(x0) && isFinite(x1) && x1 > x0 && sTail !== 0) segs.push({ x0, x1, sign: sTail });
+                        }
+                        return segs;
+                    };
+
+                    const shapes = [];
+                    const EPS = 1e-10;
+                    // Derivative signs for monotonicity
+                    if (monoEnabled) {
+                        const signs = new Array(xs.length).fill(0);
+                        for (let i = 1; i < xs.length - 1; i++) {
+                            const dx = xs[i+1] - xs[i-1];
+                            const dy = ys[i+1] - ys[i-1];
+                            const m = dy / (Math.abs(dx) > EPS ? dx : (dx >= 0 ? EPS : -EPS));
+                            signs[i] = (isFinite(m) && Math.abs(m) > 1e-9) ? (m > 0 ? 1 : -1) : 0;
+                        }
+                        const segs = mkSegments(signs);
+                        segs.forEach(seg => {
+                            shapes.push({
+                                type: 'rect', xref: 'x', yref: 'paper',
+                                x0: seg.x0, x1: seg.x1, y0: 0, y1: 1,
+                                fillcolor: seg.sign > 0 ? 'rgba(76,175,80,0.09)' : 'rgba(244,67,54,0.08)',
+                                line: { width: 0 }, layer: 'below', __monotonicityTool: true
+                            });
+                        });
+                        currentMonotonicityShapes = shapes.slice();
+                    }
+                    // Second derivative signs for concavity
+                    if (concEnabled) {
+                        const signs2 = new Array(xs.length).fill(0);
+                        for (let i = 1; i < xs.length - 1; i++) {
+                            const dx1 = xs[i] - xs[i-1];
+                            const dx2 = xs[i+1] - xs[i];
+                            if (!(Math.abs(dx1) > EPS && Math.abs(dx2) > EPS)) { signs2[i] = 0; continue; }
+                            const s0 = (ys[i] - ys[i-1]) / dx1;
+                            const s1 = (ys[i+1] - ys[i]) / dx2;
+                            const denom = 0.5 * (dx1 + dx2);
+                            const ypp = (s1 - s0) / (Math.abs(denom) > EPS ? denom : EPS);
+                            signs2[i] = (isFinite(ypp) && Math.abs(ypp) > 1e-9) ? (ypp > 0 ? 1 : -1) : 0;
+                        }
+                        // Prefer robust segmentation using known inflection points (if available)
+                        const inflXs = Array.isArray(resultPayload.inflections) && resultPayload.inflections.length
+                            ? resultPayload.inflections.map(p => p.x).filter(v => isFinite(v)).sort((a,b)=>a-b)
+                            : [];
+                        let concShapes;
+                        if (inflXs.length) {
+                            const boundaries = [];
+                            // map each inflection x to nearest right index boundary
+                            const findRightIndex = (x) => {
+                                let lo = 0, hi = xs.length - 2, ans = 1;
+                                while (lo <= hi) {
+                                    const mid = (lo + hi) >> 1;
+                                    if (xs[mid] <= x) { ans = mid + 1; lo = mid + 1; } else { hi = mid - 1; }
+                                }
+                                if (ans < 1) ans = 1; if (ans > xs.length - 1) ans = xs.length - 1;
+                                return ans;
+                            };
+                            inflXs.forEach(x => { if (x > xs[0] + EPS && x < xs[xs.length-1] - EPS) boundaries.push(findRightIndex(x)); });
+                            // de-duplicate and sort boundaries
+                            const uniq = Array.from(new Set(boundaries)).sort((a,b)=>a-b);
+                            let start = 0;
+                            concShapes = [];
+                            const pushInterval = (i0, i1) => {
+                                if (i1 <= i0) return;
+                                const x0 = xs[i0];
+                                const x1 = xs[i1];
+                                if (!(isFinite(x0) && isFinite(x1) && x1 > x0)) return;
+                                // Majority sign within interval
+                                let sum = 0, cnt = 0;
+                                for (let k = Math.max(1,i0); k < Math.min(xs.length-1, i1); k++) { const s = signs2[k]; if (s !== 0) { sum += s; cnt++; } }
+                                if (cnt === 0) return; // indeterminate, skip small interval
+                                const sgn = sum > 0 ? 1 : (sum < 0 ? -1 : 0);
+                                if (sgn === 0) return;
+                                concShapes.push({
+                                    type: 'rect', xref: 'x', yref: 'paper',
+                                    x0, x1, y0: 0, y1: 1,
+                                    fillcolor: sgn > 0 ? 'rgba(106,79,179,0.07)' : 'rgba(255,152,0,0.08)',
+                                    line: { width: 0 }, layer: 'below', __concavityTool: true
+                                });
+                            };
+                            uniq.forEach(b => { pushInterval(start, b); start = b; });
+                            pushInterval(start, xs.length - 1);
+                        } else {
+                            // Fallback to sign-change segmentation if no inflection points available
+                            const segs2 = mkSegments(signs2);
+                            concShapes = segs2.map(seg => ({
+                                type: 'rect', xref: 'x', yref: 'paper',
+                                x0: seg.x0, x1: seg.x1, y0: 0, y1: 1,
+                                fillcolor: seg.sign > 0 ? 'rgba(106,79,179,0.07)' : 'rgba(255,152,0,0.08)',
+                                line: { width: 0 }, layer: 'below', __concavityTool: true
+                            }));
+                        }
+                        currentConcavityShapes = concShapes;
+                        shapes.push(...concShapes);
+                    }
+                    if (shapes.length) {
+                        layout.shapes = (layout.shapes || []).concat(shapes);
+                    }
+                }
+            }
 
             // Custom fullscreen modebar button (integrates with Plotly UI)
             const fsIcon = { width: 512, height: 512, path: 'M0,96 L0,0 96,0 96,32 32,32 32,96 Z M416,0 512,0 512,96 480,96 480,32 416,32 Z M0,416 32,416 32,480 96,480 96,512 0,512 Z M480,416 512,416 512,512 416,512 416,480 480,480 Z' };
@@ -2666,104 +2982,218 @@ document.addEventListener('DOMContentLoaded', () => {
                         const modeEl = document.getElementById('plotMode');
                         const mode = (modeEl && modeEl.value) || 'cartesian';
                         const tangEnabled = !!document.getElementById('tangentToolCheckbox')?.checked;
-                        if (mode !== 'cartesian' || !tangEnabled) return;
+                        const paramClickEnabled = !!document.getElementById('paramClickToolCheckbox')?.checked;
+                        const polarClickEnabled = !!document.getElementById('polarClickToolCheckbox')?.checked;
+                        if (mode !== 'cartesian' && mode !== 'parametric' && mode !== 'polar') return;
                         const pt = ev && ev.points && ev.points[0];
-                        if (!pt || typeof pt.x !== 'number') return;
-                        const x0 = pt.x;
-                        const xs = (samples1 && samples1.x) ? samples1.x : [];
-                        const ys = (samples1 && samples1.y) ? samples1.y : [];
-                        if (!Array.isArray(xs) || !Array.isArray(ys) || xs.length < 3 || ys.length !== xs.length) return;
+                        if (mode === 'cartesian') {
+                            if (!tangEnabled) return;
+                            if (!pt || typeof pt.x !== 'number') return;
+                            const x0 = pt.x;
+                            const xs = (samples1 && samples1.x) ? samples1.x : [];
+                            const ys = (samples1 && samples1.y) ? samples1.y : [];
+                            if (!Array.isArray(xs) || !Array.isArray(ys) || xs.length < 3 || ys.length !== xs.length) return;
 
-                        // Ensure xs ascending; if not, create sorted copy
-                        let xArr = xs, yArr = ys;
-                        if (xs.length >= 2 && xs[0] > xs[1]) {
-                            const idxs = xs.map((v,i)=>i).sort((a,b)=>xs[a]-xs[b]);
-                            xArr = idxs.map(i=>xs[i]);
-                            yArr = idxs.map(i=>ys[i]);
-                        }
-                        // Helper: find bracketing indices
-                        const findBracket = (x) => {
-                            let lo = 0, hi = xArr.length - 1;
-                            if (x <= xArr[0]) return [0, 1];
-                            if (x >= xArr[hi]) return [hi-1, hi];
-                            while (hi - lo > 1) {
-                                const mid = (lo + hi) >> 1;
-                                if (xArr[mid] <= x) lo = mid; else hi = mid;
+                            // Ensure xs ascending; if not, create sorted copy
+                            let xArr = xs, yArr = ys;
+                            if (xs.length >= 2 && xs[0] > xs[1]) {
+                                const idxs = xs.map((v,i)=>i).sort((a,b)=>xs[a]-xs[b]);
+                                xArr = idxs.map(i=>xs[i]);
+                                yArr = idxs.map(i=>ys[i]);
                             }
-                            return [lo, hi];
-                        };
-                        const [i0, i1] = findBracket(x0);
-                        const xA = xArr[i0], xB = xArr[i1];
-                        const yA = yArr[i0], yB = yArr[i1];
-                        const t = (x0 - xA) / Math.max(1e-12, (xB - xA));
-                        const y0 = yA + (yB - yA) * t;
+                            // Helper: find bracketing indices
+                            const findBracket = (x) => {
+                                let lo = 0, hi = xArr.length - 1;
+                                if (x <= xArr[0]) return [0, 1];
+                                if (x >= xArr[hi]) return [hi-1, hi];
+                                while (hi - lo > 1) {
+                                    const mid = (lo + hi) >> 1;
+                                    if (xArr[mid] <= x) lo = mid; else hi = mid;
+                                }
+                                return [lo, hi];
+                            };
+                            const [i0, i1] = findBracket(x0);
+                            const xA = xArr[i0], xB = xArr[i1];
+                            const yA = yArr[i0], yB = yArr[i1];
+                            const t = (x0 - xA) / Math.max(1e-12, (xB - xA));
+                            const y0 = yA + (yB - yA) * t;
 
-                        // Derivative: centered difference around nearest index
-                        let iNearest = (Math.abs(x0 - xA) < Math.abs(xB - x0)) ? i0 : i1;
-                        if (iNearest <= 0) iNearest = 1;
-                        if (iNearest >= xArr.length - 1) iNearest = xArr.length - 2;
-                        const xL = xArr[iNearest - 1], xR = xArr[iNearest + 1];
-                        const yL = yArr[iNearest - 1], yR = yArr[iNearest + 1];
-                        const denom = Math.max(1e-12, (xR - xL));
-                        const m = (yR - yL) / denom; // f'(x0) approx
+                            // Derivative: centered difference around nearest index
+                            let iNearest = (Math.abs(x0 - xA) < Math.abs(xB - x0)) ? i0 : i1;
+                            if (iNearest <= 0) iNearest = 1;
+                            if (iNearest >= xArr.length - 1) iNearest = xArr.length - 2;
+                            const xL = xArr[iNearest - 1], xR = xArr[iNearest + 1];
+                            const yL = yArr[iNearest - 1], yR = yArr[iNearest + 1];
+                            const denom = Math.max(1e-12, (xR - xL));
+                            const m = (yR - yL) / denom; // f'(x0) approx
 
-                        const layoutRanges = {
-                            x: (gd.layout.xaxis && gd.layout.xaxis.range) ? gd.layout.xaxis.range.slice() : [xMin, xMax],
-                            y: (gd.layout.yaxis && gd.layout.yaxis.range) ? gd.layout.yaxis.range.slice() : [yMin, yMax]
-                        };
-                        const xLeft = layoutRanges.x[0], xRight = layoutRanges.x[1];
-                        const yAt = (x) => y0 + m * (x - x0);
-                        const tang = {
-                            type: 'line',
-                            xref: 'x', yref: 'y',
-                            x0: xLeft, y0: yAt(xLeft),
-                            x1: xRight, y1: yAt(xRight),
-                            line: { color: '#6a4fb3', width: 2, dash: 'dash' }
-                        };
-                        // Normal line
-                        let normal;
-                        if (Math.abs(m) < 1e-6) {
-                            // normal is vertical x = x0
-                            normal = { type: 'line', xref:'x', yref:'paper', x0: x0, x1: x0, y0: 0, y1: 1, line: { color:'#2e7d32', width:2, dash:'dot' } };
-                        } else {
-                            const mn = -1 / m;
-                            const yN = (x) => y0 + mn * (x - x0);
-                            normal = { type: 'line', xref:'x', yref:'y', x0: xLeft, y0: yN(xLeft), x1: xRight, y1: yN(xRight), line: { color:'#2e7d32', width:2, dash:'dot' } };
+                            const layoutRanges = {
+                                x: (gd.layout.xaxis && gd.layout.xaxis.range) ? gd.layout.xaxis.range.slice() : [xMin, xMax],
+                                y: (gd.layout.yaxis && gd.layout.yaxis.range) ? gd.layout.yaxis.range.slice() : [yMin, yMax]
+                            };
+                            const xLeft = layoutRanges.x[0], xRight = layoutRanges.x[1];
+                            const yAt = (x) => y0 + m * (x - x0);
+                            const tang = {
+                                type: 'line',
+                                xref: 'x', yref: 'y',
+                                x0: xLeft, y0: yAt(xLeft),
+                                x1: xRight, y1: yAt(xRight),
+                                line: { color: '#6a4fb3', width: 2, dash: 'dash' }
+                            };
+                            // Normal line
+                            let normal;
+                            if (Math.abs(m) < 1e-6) {
+                                // normal is vertical x = x0
+                                normal = { type: 'line', xref:'x', yref:'paper', x0: x0, x1: x0, y0: 0, y1: 1, line: { color:'#2e7d32', width:2, dash:'dot' } };
+                            } else {
+                                const mn = -1 / m;
+                                const yN = (x) => y0 + mn * (x - x0);
+                                normal = { type: 'line', xref:'x', yref:'y', x0: xLeft, y0: yN(xLeft), x1: xRight, y1: yN(xRight), line: { color:'#2e7d32', width:2, dash:'dot' } };
+                            }
+                            // Annotation near the point
+                            const a = m, b = y0 - m * x0;
+                            const eqT = `T: y = ${a.toFixed(4)}·x ${b>=0?'+':'−'} ${Math.abs(b).toFixed(4)}`;
+                            let eqN;
+                            if (Math.abs(m) < 1e-6) eqN = `N: x = ${x0.toFixed(4)}`;
+                            else {
+                                const an = -1/m, bn = y0 - (-1/m)*x0;
+                                eqN = `N: y = ${an.toFixed(4)}·x ${bn>=0?'+':'−'} ${Math.abs(bn).toFixed(4)}`;
+                            }
+                            const ann = {
+                                x: x0,
+                                y: y0,
+                                xref: 'x', yref: 'y',
+                                text: `${eqT}<br>${eqN}<br>(x₀=${x0.toFixed(4)}, y₀=${y0.toFixed(4)})`,
+                                showarrow: true,
+                                arrowhead: 2,
+                                ax: 20,
+                                ay: -30,
+                                bgcolor: 'rgba(255,255,255,0.9)',
+                                bordercolor: '#90caf9',
+                                borderwidth: 1,
+                                font: { size: 12, color:'#37474f' }
+                            };
+
+                            currentTangentShapes = [tang, normal];
+                            currentTangentAnnotations = [ann];
+                            const newShapes = (gd.layout.shapes || []).filter(s => !s.__tangentTool);
+                            currentTangentShapes.forEach(s => { s.__tangentTool = true; });
+                            const newAnns = (gd.layout.annotations || []).filter(a=>!a.__tangentTool);
+                            currentTangentAnnotations.forEach(a => { a.__tangentTool = true; });
+                            Plotly.relayout(gd, {
+                                shapes: newShapes.concat(currentTangentShapes),
+                                annotations: newAnns.concat(currentTangentAnnotations)
+                            });
+                            return;
                         }
-                        // Annotation near the point
-                        const a = m, b = y0 - m * x0;
-                        const eqT = `T: y = ${a.toFixed(4)}·x ${b>=0?'+':'−'} ${Math.abs(b).toFixed(4)}`;
-                        let eqN;
-                        if (Math.abs(m) < 1e-6) eqN = `N: x = ${x0.toFixed(4)}`;
-                        else {
-                            const an = -1/m, bn = y0 - (-1/m)*x0;
-                            eqN = `N: y = ${an.toFixed(4)}·x ${bn>=0?'+':'−'} ${Math.abs(bn).toFixed(4)}`;
-                        }
-                        const ann = {
-                            x: x0,
-                            y: y0,
-                            xref: 'x', yref: 'y',
-                            text: `${eqT}<br>${eqN}<br>(x₀=${x0.toFixed(4)}, y₀=${y0.toFixed(4)})`,
-                            showarrow: true,
-                            arrowhead: 2,
-                            ax: 20,
-                            ay: -30,
-                            bgcolor: 'rgba(255,255,255,0.9)',
-                            bordercolor: '#90caf9',
-                            borderwidth: 1,
-                            font: { size: 12, color:'#37474f' }
-                        };
 
-                        currentTangentShapes = [tang, normal];
-                        currentTangentAnnotations = [ann];
-                        const newShapes = (gd.layout.shapes || []).filter(s => !s.__tangentTool);
-                        currentTangentShapes.forEach(s => { s.__tangentTool = true; });
-                        const newAnns = (gd.layout.annotations || []).filter(a=>!a.__tangentTool);
-                        currentTangentAnnotations.forEach(a => { a.__tangentTool = true; });
-                        Plotly.relayout(gd, {
-                            shapes: newShapes.concat(currentTangentShapes),
-                            annotations: newAnns.concat(currentTangentAnnotations)
-                        });
+                        if (mode === 'parametric') {
+                            if (!paramClickEnabled) return;
+                            if (!pt || typeof pt.pointNumber !== 'number') return;
+                            const idx = Math.max(1, Math.min((samples1.x || []).length - 2, pt.pointNumber));
+                            const x0 = samples1.x[idx], y0 = samples1.y[idx];
+                            if (!isFinite(x0) || !isFinite(y0)) return;
+                            const xm1 = samples1.x[idx - 1], xp1 = samples1.x[idx + 1];
+                            const ym1 = samples1.y[idx - 1], yp1 = samples1.y[idx + 1];
+                            const vx = xp1 - xm1;
+                            const vy = yp1 - ym1;
+                            const vlen = Math.hypot(vx, vy) || 1e-12;
+                            const tx = vx / vlen, ty = vy / vlen;
+                            const nx = -ty, ny = tx;
+                            const xr = (gd.layout.xaxis.range || [xMin, xMax]);
+                            const yr = (gd.layout.yaxis.range || [yMin, yMax]);
+                            const scale = 0.08 * Math.min(Math.abs(xr[1]-xr[0]), Math.abs(yr[1]-yr[0]));
+                            // Centered segments (±scale)
+                            const tSeg = { type:'line', xref:'x', yref:'y', x0:x0 - tx*scale, y0:y0 - ty*scale, x1:x0 + tx*scale, y1:y0 + ty*scale, line:{ color:'#6a4fb3', width:2 } };
+                            const nSeg = { type:'line', xref:'x', yref:'y', x0:x0 - nx*scale, y0:y0 - ny*scale, x1:x0 + nx*scale, y1:y0 + ny*scale, line:{ color:'#2e7d32', width:2, dash:'dot' } };
+                            const slope = (vx !== 0) ? (vy / vx) : Infinity;
+                            const txt = isFinite(slope) ? `dy/dx ≈ ${slope.toFixed(4)}` : 'dy/dx ≈ ∞';
+                            const ann = { x:x0, y:y0, xref:'x', yref:'y', text: txt, showarrow:true, arrowhead:2, ax: 18, ay: -24, bgcolor:'rgba(255,255,255,0.9)', bordercolor:'#b39ddb', borderwidth:1, font:{size:12} };
+                            currentParamClickShapes = [tSeg, nSeg];
+                            currentParamClickAnnotations = [ann];
+                            const newShapes = (gd.layout.shapes || []).filter(s => !s.__paramClickTool);
+                            currentParamClickShapes.forEach(s => { s.__paramClickTool = true; });
+                            const newAnns = (gd.layout.annotations || []).filter(a => !a.__paramClickTool);
+                            currentParamClickAnnotations.forEach(a => { a.__paramClickTool = true; });
+                            Plotly.relayout(gd, { shapes: newShapes.concat(currentParamClickShapes), annotations: newAnns.concat(currentParamClickAnnotations) });
+                            return;
+                        }
+
+                        if (mode === 'polar') {
+                            if (!polarClickEnabled) return;
+                            if (!pt || typeof pt.pointNumber !== 'number') return;
+                            const idx = Math.max(1, Math.min(((resultPayload.theta || []).length || 0) - 2, pt.pointNumber));
+                            const thetas = resultPayload.theta || [];
+                            const rs = resultPayload.r || [];
+                            if (thetas.length < 3 || rs.length !== thetas.length) return;
+                            const deg2rad = (d)=> d * Math.PI / 180;
+                            const rad2deg = (r)=> r * 180 / Math.PI;
+                            const th0 = deg2rad(thetas[idx]);
+                            const r0 = rs[idx];
+                            const thm1 = deg2rad(thetas[idx-1]);
+                            const thp1 = deg2rad(thetas[idx+1]);
+                            const rm1 = rs[idx-1];
+                            const rp1 = rs[idx+1];
+                            // Cartesian point
+                            const x0 = r0 * Math.cos(th0), y0 = r0 * Math.sin(th0);
+                            const xm1 = rm1 * Math.cos(thm1), ym1 = rm1 * Math.sin(thm1);
+                            const xp1 = rp1 * Math.cos(thp1), yp1 = rp1 * Math.sin(thp1);
+                            // Tangent direction (cartesian)
+                            const vx = xp1 - xm1, vy = yp1 - ym1;
+                            const vlen = Math.hypot(vx, vy) || 1e-12;
+                            const tx = vx / vlen, ty = vy / vlen;
+                            // Radial direction (cartesian)
+                            const rlen = Math.hypot(x0, y0) || 1e-12;
+                            const rx = x0 / rlen, ry = y0 / rlen;
+                            // Choose a scale in r-units
+                            const rMax = rs.reduce((m,v)=> (isFinite(v)&&Math.abs(v)>m?Math.abs(v):m), 0) || Math.max(1, Math.abs(r0));
+                            const scaleR = 0.12 * rMax;
+                            // Convert endpoints back to polar for scatterpolar
+                            const toPolar = (x,y) => ({ r: Math.hypot(x,y), th: rad2deg(Math.atan2(y,x)) });
+                            const radP = toPolar(x0 + rx*scaleR, y0 + ry*scaleR);
+                            const tanP = toPolar(x0 + tx*scaleR, y0 + ty*scaleR);
+                            const radTrace = {
+                                type: 'scatterpolar',
+                                r: [r0, radP.r],
+                                theta: [rad2deg(th0), radP.th],
+                                mode: 'lines',
+                                line: { color: '#0277bd', width: 2 },
+                                showlegend: false,
+                                hoverinfo: 'skip',
+                                meta: { __polarClickTool: true }
+                            };
+                            const tanTrace = {
+                                type: 'scatterpolar',
+                                r: [r0, tanP.r],
+                                theta: [rad2deg(th0), tanP.th],
+                                mode: 'lines',
+                                line: { color: '#6a4fb3', width: 2, dash: 'dot' },
+                                showlegend: false,
+                                hoverinfo: 'skip',
+                                meta: { __polarClickTool: true }
+                            };
+                            // dr/dθ approx (θ in radians)
+                            const dth = (thp1 - thm1);
+                            const dr = (rp1 - rm1);
+                            const drdth = dr / (Math.abs(dth) > 1e-12 ? dth : 1e-12);
+                            const labelTrace = {
+                                type: 'scatterpolar',
+                                r: [r0],
+                                theta: [rad2deg(th0)],
+                                mode: 'markers+text',
+                                marker: { size: 6, color: '#455a64' },
+                                text: [`θ≈${(thetas[idx]).toFixed(2)}°, r≈${(r0).toFixed(4)}\ndr/dθ≈${drdth.toFixed(4)}`],
+                                textposition: 'top center',
+                                textfont: { size: 12, color: '#37474f' },
+                                showlegend: false,
+                                hoverinfo: 'skip',
+                                meta: { __polarClickTool: true }
+                            };
+                            currentPolarClickTraces = [radTrace, tanTrace, labelTrace];
+                            // Replot to inject overlay traces via renderFromComputation path
+                            plotButton.click();
+                            return;
+                        }
                     } catch (_) { /* ignore */ }
                 });
 
@@ -3090,9 +3520,12 @@ document.addEventListener('DOMContentLoaded', () => {
         currentParametricAnnotation = null;
         currentAreaBetweenTrace = null; // Clear area between trace
         currentAreaBetweenAnnotation = null;
-        // Clear tangent overlays
+    // Clear tangent overlays
         currentTangentShapes = null;
         currentTangentAnnotations = null;
+    // Clear intervals
+    currentAnalysisData.monotonicityIntervals = [];
+    currentAnalysisData.concavityIntervals = [];
         // Clear all analysis data
         currentAnalysisData.zeros = [];
         currentAnalysisData.extrema = [];
@@ -3102,14 +3535,17 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAnalysisData.derivative = '';
         currentAnalysisData.areaBetween = null; // Clear area between data
     currentAnalysisData.asymptotes = null;
-        // Remove tangent overlays from current layout immediately
+    currentPolarClickTraces = null;
+        // Remove analysis overlays from current layout immediately
         try {
             if (myChart && myChart.layout) {
-                const filteredShapes = (myChart.layout.shapes || []).filter(s => !s.__tangentTool);
-                const filteredAnns = (myChart.layout.annotations || []).filter(a => !a.__tangentTool);
+                const filteredShapes = (myChart.layout.shapes || []).filter(s => !s.__tangentTool && !s.__paramClickTool && !s.__polarClickTool && !s.__monotonicityTool && !s.__concavityTool);
+                const filteredAnns = (myChart.layout.annotations || []).filter(a => !a.__tangentTool && !a.__paramClickTool && !a.__polarClickTool);
                 Plotly.relayout(myChart, { shapes: filteredShapes, annotations: filteredAnns });
             }
         } catch(_) {}
+        currentMonotonicityShapes = null;
+        currentConcavityShapes = null;
         // Reset panel but zostaw widoczny (pusty placeholder)
         const insightsToggle = document.getElementById('insightsToggle');
         if (analysisResultsContent) {
@@ -3227,12 +3663,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const derivativeCheck = document.getElementById('derivativePlotCheckbox');
             const inflectionsCheck = document.getElementById('inflectionsCheckbox');
             const tangentCheck = document.getElementById('tangentToolCheckbox');
+            const paramClickCheck = document.getElementById('paramClickToolCheckbox');
+            const polarClickCheck = document.getElementById('polarClickToolCheckbox');
             if (zerosCheck) zerosCheck.checked = false;
             if (extremaCheck) extremaCheck.checked = false;
             if (intersectionsCheck) intersectionsCheck.checked = false;
             if (derivativeCheck) derivativeCheck.checked = false;
             if (inflectionsCheck) inflectionsCheck.checked = false;
             if (tangentCheck) tangentCheck.checked = false;
+            if (paramClickCheck) paramClickCheck.checked = false;
+            if (polarClickCheck) polarClickCheck.checked = false;
             // (label toggle removed)
 
             // Zsynchronizuj przełączniki w panelu fullscreen (jeśli aktywny)
@@ -3269,6 +3709,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const intersectionsCheck = document.getElementById('intersectionsCheckbox');
             const derivativeCheck = document.getElementById('derivativePlotCheckbox');
             const inflectionsCheck = document.getElementById('inflectionsCheckbox');
+            const paramClickCheck = document.getElementById('paramClickToolCheckbox');
+            const polarClickCheck = document.getElementById('polarClickToolCheckbox');
             
             if (zerosCheck) zerosCheck.checked = false;
             if (extremaCheck) extremaCheck.checked = false;
@@ -3279,6 +3721,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (asymCheck) asymCheck.checked = false;
             const tanCheck = document.getElementById('tangentToolCheckbox');
             if (tanCheck) tanCheck.checked = false;
+            if (paramClickCheck) paramClickCheck.checked = false;
+            if (polarClickCheck) polarClickCheck.checked = false;
             // label checkbox removed
             
             // Reset integral bounds to defaults
@@ -3366,6 +3810,73 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentTangentAnnotations = null;
             }
             // Re-render to sync layout and FS dock state
+            plotButton.click();
+        });
+    }
+    const paramClickToolCheckbox = document.getElementById('paramClickToolCheckbox');
+    if (paramClickToolCheckbox) {
+        paramClickToolCheckbox.addEventListener('change', () => {
+            if (!paramClickToolCheckbox.checked) {
+                try {
+                    if (myChart && myChart.layout) {
+                        const filteredShapes = (myChart.layout.shapes || []).filter(s => !s.__paramClickTool);
+                        const filteredAnns = (myChart.layout.annotations || []).filter(a => !a.__paramClickTool);
+                        Plotly.relayout(myChart, { shapes: filteredShapes, annotations: filteredAnns });
+                    }
+                } catch(_) {}
+                currentParamClickShapes = null;
+                currentParamClickAnnotations = null;
+            }
+            plotButton.click();
+        });
+    }
+    const polarClickToolCheckbox = document.getElementById('polarClickToolCheckbox');
+    if (polarClickToolCheckbox) {
+        polarClickToolCheckbox.addEventListener('change', () => {
+            if (!polarClickToolCheckbox.checked) {
+                try {
+                    if (myChart && myChart.layout) {
+                        const filteredShapes = (myChart.layout.shapes || []).filter(s => !s.__polarClickTool);
+                        const filteredAnns = (myChart.layout.annotations || []).filter(a => !a.__polarClickTool);
+                        Plotly.relayout(myChart, { shapes: filteredShapes, annotations: filteredAnns });
+                    }
+                } catch(_) {}
+                currentPolarClickShapes = null;
+                currentPolarClickAnnotations = null;
+                currentPolarClickTraces = null;
+            }
+            plotButton.click();
+        });
+    }
+    // Monotonicity toggle - cleanup and refresh
+    const monotonicityCheckbox = document.getElementById('monotonicityCheckbox');
+    if (monotonicityCheckbox) {
+        monotonicityCheckbox.addEventListener('change', () => {
+            if (!monotonicityCheckbox.checked) {
+                try {
+                    if (myChart && myChart.layout) {
+                        const filteredShapes = (myChart.layout.shapes || []).filter(s => !s.__monotonicityTool);
+                        Plotly.relayout(myChart, { shapes: filteredShapes });
+                    }
+                } catch(_) {}
+                currentMonotonicityShapes = null;
+            }
+            plotButton.click();
+        });
+    }
+    // Concavity toggle - cleanup and refresh
+    const concavityCheckbox = document.getElementById('concavityCheckbox');
+    if (concavityCheckbox) {
+        concavityCheckbox.addEventListener('change', () => {
+            if (!concavityCheckbox.checked) {
+                try {
+                    if (myChart && myChart.layout) {
+                        const filteredShapes = (myChart.layout.shapes || []).filter(s => !s.__concavityTool);
+                        Plotly.relayout(myChart, { shapes: filteredShapes });
+                    }
+                } catch(_) {}
+                currentConcavityShapes = null;
+            }
             plotButton.click();
         });
     }
@@ -4980,6 +5491,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const intersectionsChecked = (document.getElementById('intersectionsCheckbox') || {}).checked;
                 const derivativePlotChecked = (document.getElementById('derivativePlotCheckbox') || {}).checked;
                 const inflectionsChecked = (document.getElementById('inflectionsCheckbox') || {}).checked;
+                const monotonicityEnabled = (document.getElementById('monotonicityCheckbox') || {}).checked;
+                const concavityEnabled = (document.getElementById('concavityCheckbox') || {}).checked;
                 const asymptotesChecked = (document.getElementById('asymptotesCheckbox') || {}).checked;
                 // Build payload depending on mode
                 const basePayload = {
@@ -4987,11 +5500,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     initialPoints: 200,
                     options: buildSamplingOptions(xMin, xMax),
                     calculateZeros: Boolean(zerosChecked),
-                    calculateExtrema: Boolean(extremaChecked),
+                    // compute extrema also when monotonicity overlay is requested (auto-mark extrema)
+                    calculateExtrema: Boolean(extremaChecked || monotonicityEnabled),
                     calculateIntersections: Boolean(intersectionsChecked),
                     scope: collectScope(),
                     calculateDerivativePlot: Boolean(derivativePlotChecked),
-                    calculateInflections: Boolean(inflectionsChecked),
+                    // Ensure inflection points are computed if concavity overlay is enabled
+                    calculateInflections: Boolean(inflectionsChecked || concavityEnabled),
                     calculateAsymptotes: Boolean(asymptotesChecked)
                 };
 
