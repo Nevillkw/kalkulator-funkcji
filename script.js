@@ -269,6 +269,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearHistoryButton = document.getElementById('clearHistoryButton');
     const fsClearHistoryButton = document.getElementById('fsClearHistoryButton');
     const insightsToggle = document.getElementById('insightsToggle');
+    const resultsToggle = document.getElementById('resultsToggle');
+    const calculatorResults = document.getElementById('calculatorResults');
+    const analysisExpand = document.getElementById('analysisExpand');
     const chartContainer = document.getElementById('chartContainer');
     // Theme toggle (deflatul)
     const deflatulToggle = document.getElementById('deflatulThemeToggle');
@@ -319,18 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fsStartMinimizedMobile = document.getElementById('fsStartMinimizedMobile');
     const fsLineWidth = document.getElementById('fsLineWidth');
 
-    // 1) Zapamiętywanie stanu rozwinięcia panelu (details)
-    try {
-        const savedOpen = localStorage.getItem('insightsOpen');
-        if (insightsToggle && (savedOpen === '0' || savedOpen === '1')) {
-            insightsToggle.open = savedOpen === '1';
-        }
-        if (insightsToggle) {
-            insightsToggle.addEventListener('toggle', () => {
-                try { localStorage.setItem('insightsOpen', insightsToggle.open ? '1' : '0'); } catch (_) {}
-            });
-        }
-    } catch (_) {}
+    // Insights panel is now always visible (no toggle functionality needed)
 
     // (usunięto belkę do zmiany wysokości — brak dodatkowej logiki)
     // Przywrócona regulacja wysokości wyników/historii (resizer) + wyrównanie wysokości sidebaru
@@ -410,6 +402,78 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { applyStoredInsightsHeight(); updateSidebarMaxHeight(); }, 0);
     })();
 
+    // Right panel toggle functionality
+    if (resultsToggle && calculatorResults) {
+        // Load saved state
+        try {
+            const savedCollapsed = localStorage.getItem('resultsCollapsed');
+            if (savedCollapsed === '1') {
+                calculatorResults.classList.add('collapsed');
+                resultsToggle.innerHTML = '▶';
+                resultsToggle.title = 'Rozwiń panel wyników';
+            } else {
+                resultsToggle.innerHTML = '◀';
+                resultsToggle.title = 'Zwiń panel wyników';
+            }
+        } catch (_) {}
+
+        resultsToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const isCollapsed = calculatorResults.classList.contains('collapsed');
+            
+            if (isCollapsed) {
+                // Expand
+                calculatorResults.classList.remove('collapsed');
+                resultsToggle.innerHTML = '◀';
+                resultsToggle.title = 'Zwiń panel wyników';
+                try { localStorage.setItem('resultsCollapsed', '0'); } catch (_) {}
+            } else {
+                // Collapse
+                calculatorResults.classList.add('collapsed');
+                resultsToggle.innerHTML = '▶';
+                resultsToggle.title = 'Rozwiń panel wyników';
+                try { localStorage.setItem('resultsCollapsed', '1'); } catch (_) {}
+            }
+            
+            // Trigger resize to update chart if needed
+            setTimeout(() => {
+                if (window.Plotly && document.getElementById('myChart')) {
+                    window.Plotly.Plots.resize(document.getElementById('myChart'));
+                }
+            }, 350);
+        });
+    }
+
+    // Analysis expand functionality
+    if (analysisExpand && analysisResults) {
+        analysisExpand.addEventListener('click', () => {
+            const isExpanded = analysisResults.classList.contains('expanded');
+            
+            if (isExpanded) {
+                // Collapse
+                analysisResults.classList.remove('expanded');
+                analysisExpand.innerHTML = '⛶';
+                analysisExpand.title = 'Rozwiń analizę';
+            } else {
+                // Expand
+                analysisResults.classList.add('expanded');
+                analysisExpand.innerHTML = '✕';
+                analysisExpand.title = 'Zamknij pełny ekran';
+            }
+        });
+
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && analysisResults.classList.contains('expanded')) {
+                analysisResults.classList.remove('expanded');
+                analysisExpand.innerHTML = '⛶';
+                analysisExpand.title = 'Rozwiń analizę';
+            }
+        });
+    }
+
     // 2) Motyw: deflatul (globalny)
     const THEMES = {
         default: {
@@ -419,8 +483,8 @@ document.addEventListener('DOMContentLoaded', () => {
             legendBorder: '#cccccc',
             shadePos: 'rgba(76, 175, 80, 0.28)',
             shadeNeg: 'rgba(244, 67, 54, 0.25)',
-            shadeBetween: 'rgba(100, 150, 255, 0.10)',
-            shadeBetweenLine: 'rgba(100, 150, 255, 0.9)',
+            shadeBetween: 'rgba(255, 152, 0, 0.25)',
+            shadeBetweenLine: 'rgba(230, 81, 0, 0.95)',
             lines: {
                 primary: 'rgb(75,192,192)',
                 secondary: 'rgb(255,99,132)',
@@ -441,8 +505,8 @@ document.addEventListener('DOMContentLoaded', () => {
             legendBorder: '#9db8da',
             shadePos: 'rgba(90, 160, 255, 0.22)',
             shadeNeg: 'rgba(255, 120, 120, 0.20)',
-            shadeBetween: 'rgba(120, 170, 255, 0.12)',
-            shadeBetweenLine: 'rgba(90,130,210,0.9)',
+            shadeBetween: 'rgba(255, 152, 0, 0.22)',
+            shadeBetweenLine: 'rgba(230, 81, 0, 0.92)',
             lines: {
                 primary: '#3e7bd9',
                 secondary: '#ff7d99',
@@ -978,10 +1042,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const enterToPlot = (el) => { if (!el) return; el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const btn = document.getElementById('plotButton'); if (btn) btn.click(); } }); };
         const mirrorSet = (fsEl, mainEl) => {
             if (!fsEl || !mainEl) return;
-            // FS -> Main
-            const forward = () => { if (mainEl.value !== fsEl.value) { mainEl.value = fsEl.value; mainEl.dispatchEvent(new Event('input', { bubbles: true })); } };
+            // Debounced forwarding for smoother typing experience
+            let mirrorTimeout;
+            const forward = () => { 
+                clearTimeout(mirrorTimeout);
+                mirrorTimeout = setTimeout(() => {
+                    if (mainEl.value !== fsEl.value) { 
+                        mainEl.value = fsEl.value; 
+                        mainEl.dispatchEvent(new Event('input', { bubbles: true })); 
+                    }
+                }, 300); // Same delay as main debounce
+            };
+            // Immediate sync on change (when user finishes)
+            const immediateSync = () => { 
+                clearTimeout(mirrorTimeout);
+                if (mainEl.value !== fsEl.value) { 
+                    mainEl.value = fsEl.value; 
+                    mainEl.dispatchEvent(new Event('input', { bubbles: true })); 
+                }
+            };
             fsEl.addEventListener('input', forward);
-            fsEl.addEventListener('change', forward);
+            fsEl.addEventListener('change', immediateSync);
+            fsEl.addEventListener('blur', immediateSync);
             enterToPlot(fsEl);
         };
         if (mode === 'cartesian') {
@@ -2101,11 +2183,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Default cartesian layout (theme-aware)
+            // Dodaj 20% marginesu do zakresów dla lepszej widoczności
+            const xRange = xMax - xMin;
+            const yRange = yMax - yMin;
+            const xMargin = xRange * 0.2;
+            const yMargin = yRange * 0.2;
+            
             let layout = {
                 dragmode: 'pan',
                 xaxis: { 
                     title: { text: usePiAxis ? 'x (rad)' : 'x', font: { size: 16, weight: 600 } }, 
-                    range: [xMin, xMax], 
+                    range: [xMin - xMargin, xMax + xMargin], 
                     type: 'linear',
                     gridcolor: t.grid || '#e0e0e0',
                     gridwidth: 1,
@@ -2120,7 +2208,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 yaxis: { 
                     title: { text: 'f(x)', font: { size: 16, weight: 600 } }, 
-                    range: [yMin, yMax], 
+                    range: [yMin - yMargin, yMax + yMargin], 
                     type: 'linear',
                     gridcolor: t.grid || '#e0e0e0',
                     gridwidth: 1,
@@ -2619,7 +2707,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(functionInputTimeout);
         functionInputTimeout = setTimeout(() => {
             if (plotButton) plotButton.click();
-        }, 1000); // 1 second debounce
+        }, 300); // 300ms debounce - szybsza reakcja dla użytkownika
     }
 
     // Wire inputs so changing expressions updates detected parameters
@@ -2839,7 +2927,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Trigger the integral calculation
                 calculateIntegralButton.click();
             }
-        }, 800); // 800ms debounce to avoid too many calculations
+        }, 400); // 400ms debounce - szybsza reakcja, ale nadal stabilna
     };
     
     if (integralA) {
@@ -3060,13 +3148,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const b = parseNumberInput(integralB.value);
                 showIntegralPreview(a, b);
                 
-                // Auto-calculate after 800ms of no typing
+                // Auto-calculate after 400ms of no typing - szybsza reakcja
                 clearTimeout(integralAutoCalcTimer);
                 integralAutoCalcTimer = setTimeout(() => {
                     if (isFinite(a) && isFinite(b) && a < b && calculateIntegralButton) {
                         calculateIntegralButton.click();
                     }
-                }, 800);
+                }, 400);
             });
         });
     }
@@ -3079,13 +3167,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const b = parseNumberInput(betweenB.value);
                 showAreaBetweenPreview(a, b);
                 
-                // Auto-calculate after 800ms of no typing
+                // Auto-calculate after 400ms of no typing - szybsza reakcja
                 clearTimeout(betweenAutoCalcTimer);
                 betweenAutoCalcTimer = setTimeout(() => {
                     if (isFinite(a) && isFinite(b) && a < b && calculateBetweenButton) {
                         calculateBetweenButton.click();
                     }
-                }, 800);
+                }, 400);
             });
         });
     }

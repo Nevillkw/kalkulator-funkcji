@@ -498,12 +498,15 @@
                     <button id="fsMobileToggle" class="fs-mobile-toggle" title="Pokaż/ukryj panel">☰</button>
                 </div>
                 <p id="errorDisplay"></p>
-                <!-- Wspólny kontener: jeden przycisk zwija/rozwija wyniki i historię -->
-                <details id="insightsToggle" class="insights" open>
-                    <summary>📋 Wyniki analizy i 📜 Historia</summary>
+            </div>
+            
+            <!-- Prawy panel: wyniki i historia -->
+            <div class="calculator-results" id="calculatorResults">
+                <button id="resultsToggle" class="results-toggle" title="Zwiń/rozwiń panel wyników">◀</button>
+                <div id="insightsToggle" class="insights">
                     <div class="insights-row">
                         <div id="analysisResults" class="analysis-results">
-                            <h4>📋 Wyniki analizy</h4>
+                            <h4>📋 Wyniki analizy <button id="analysisExpand" class="analysis-expand" title="Rozwiń analizę">⛶</button></h4>
                             <div id="analysisResultsContent"></div>
                         </div>
                         <div id="historyPanel" class="history-panel">
@@ -516,8 +519,8 @@
                             </div>
                         </div>
                     </div>
-                    <div id="insightsResizer" class="insights-resizer" title="Przeciągnij, aby zmienić wysokość"></div>
-                </details>
+
+                </div>
             </div>
         </div>
 
