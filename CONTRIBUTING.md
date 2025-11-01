@@ -1,18 +1,25 @@
-# Wkład w projekt
+# Wkład w projekt (Contributing)
 
-Dziękuję za chęć pomocy! Proszę, zanim wyślesz PR:
+Ten projekt jest objęty licencją „Wszystkie prawa zastrzeżone”. Kontrybucje są mile widziane, jednak ich przyjęcie jest w pełni uznaniowe.
 
-- Otwórz Issue i opisz problem/zmianę
-- Utrzymuj zakres PR możliwie mały i dobrze opisany
-- Do zmian w UI dołącz zrzut ekranu lub krótki GIF
-- Staraj się nie zmieniać formatowania poza edytowanymi fragmentami
+Zanim przygotujesz propozycję zmiany:
 
-## Development lokalnie
+- Najpierw otwórz Issue i opisz problem/zmianę oraz motywację
+- Utrzymuj zakres propozycji możliwie mały i dobrze udokumentowany
+- Do zmian w UI dołącz zrzuty ekranu lub krótki GIF
+- Nie zmieniaj formatowania poza edytowanymi fragmentami
+
+## Pull Requesty
+- PR-y mogą być rozpatrywane, ale ich akceptacja nie jest gwarantowana
+- Wszelkie zaakceptowane kontrybucje stają się częścią projektu objętego licencją „Wszystkie prawa zastrzeżone” i mogą być wykorzystywane bez dodatkowego wynagrodzenia
+- W uzasadnionych przypadkach zastrzegam sobie prawo do poproszenia o podpisanie dodatkowego oświadczenia/CLA
+
+## Środowisko lokalne
 - Otwórz `index.html` w przeglądarce lub użyj prostego serwera HTTP
-- Sprawdź w desktop i mobile (tryb fullscreen)
+- Sprawdź działanie na desktop i mobile (w tym fullscreen)
 
-## Standard
+## Standard jakości
 - Język interfejsu: polski
-- Zachowaj dostępność (hierarchia nagłówków, etykiety, kontrast)
+- Pamiętaj o dostępności (hierarchia nagłówków, etykiety, kontrast)
 
-Dziękuję za kontrybucję! 🙌
+W sprawach licencyjnych i komercyjnych: https://arturmrowicki.pl

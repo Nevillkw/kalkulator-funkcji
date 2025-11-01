@@ -2,4 +2,6 @@
 
 - Zgłaszanie błędów i pomysłów: użyj Issues
 - Pytania użytkowników: Issues lub Discussions (jeśli włączone)
-- Priorytetowe wsparcie komercyjne: skontaktuj się przez profil GitHub właściciela repo
+- Wsparcie komercyjne / wdrożeniowe: https://arturmrowicki.pl
+
+Uwaga: projekt jest objęty licencją „Wszystkie prawa zastrzeżone”. Zgłoszenia będą rozpatrywane według uznania autora.
