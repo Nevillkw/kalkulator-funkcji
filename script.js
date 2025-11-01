@@ -1956,7 +1956,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // currentAnalysisData is now declared globally at top of file for 3D access
     let currentPolarIntegralTraces = null; // polar wedge and optional label marker
     let currentParametricHighlightTrace = null; // highlighted segment for t in [a,b]
+    let currentParametricAnnotation = null; // centered label for parametric integral segment
     let currentAreaBetweenTrace = null;
+    let currentAreaBetweenAnnotation = null; // centered label for area-between shading
 
     // Calculator worker - handles heavy computations
     let calcWorker = null;
@@ -2434,6 +2436,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 layout.annotations = (layout.annotations || []).concat(currentIntegralAnnotations);
             }
 
+            // Add centered label for area between curves, if present
+            if (!resultPayload.polar && currentAreaBetweenAnnotation) {
+                layout.annotations = (layout.annotations || []).concat([currentAreaBetweenAnnotation]);
+            }
+
+            // Add centered label for parametric integral segment, if present
+            if (!resultPayload.polar && currentParametricAnnotation) {
+                layout.annotations = (layout.annotations || []).concat([currentParametricAnnotation]);
+            }
+
             // Custom fullscreen modebar button (integrates with Plotly UI)
             const fsIcon = { width: 512, height: 512, path: 'M0,96 L0,0 96,0 96,32 32,32 32,96 Z M416,0 512,0 512,96 480,96 480,32 416,32 Z M0,416 32,416 32,480 96,480 96,512 0,512 Z M480,416 512,416 512,512 416,512 416,480 480,480 Z' };
             const fsButton = {
@@ -2818,7 +2830,9 @@ document.addEventListener('DOMContentLoaded', () => {
         currentIntegralAnnotations = null;
         currentPolarIntegralTraces = null;
         currentParametricHighlightTrace = null;
+        currentParametricAnnotation = null;
         currentAreaBetweenTrace = null; // Clear area between trace
+        currentAreaBetweenAnnotation = null;
         // Clear all analysis data
         currentAnalysisData.zeros = [];
         currentAnalysisData.extrema = [];
@@ -3213,6 +3227,64 @@ document.addEventListener('DOMContentLoaded', () => {
                         a: Number(payload.a),
                         b: Number(payload.b)
                     };
+
+                    // Compute centered label for area between curves using edge heights
+                    try {
+                        const tTheme = getActiveTheme();
+                        const aX = Number(payload.a), bX = Number(payload.b);
+                        const i0 = 0;
+                        const i1 = Math.max(0, xs.length - 1);
+                        let fa = null, fb = null, ga = null, gb = null;
+                        fa = (isFinite(y1[i0]) ? y1[i0] : null);
+                        ga = (isFinite(y2[i0]) ? y2[i0] : null);
+                        fb = (isFinite(y1[i1]) ? y1[i1] : null);
+                        gb = (isFinite(y2[i1]) ? y2[i1] : null);
+
+                        // Fallback: evaluate expressions directly if needed
+                        if ((!isFinite(fa) || !isFinite(ga) || !isFinite(fb) || !isFinite(gb))) {
+                            const scope = collectScope();
+                            const expr1 = (functionInput && functionInput.value) ? functionInput.value.trim() : '';
+                            const expr2 = (function2Input && function2Input.value) ? function2Input.value.trim() : '';
+                            if (expr1 && expr2) {
+                                try {
+                                    const c1 = math.parse(expr1).compile();
+                                    const c2 = math.parse(expr2).compile();
+                                    fa = isFinite(fa) ? fa : c1.evaluate(Object.assign({ x: aX }, scope));
+                                    ga = isFinite(ga) ? ga : c2.evaluate(Object.assign({ x: aX }, scope));
+                                    fb = isFinite(fb) ? fb : c1.evaluate(Object.assign({ x: bX }, scope));
+                                    gb = isFinite(gb) ? gb : c2.evaluate(Object.assign({ x: bX }, scope));
+                                } catch(_) {}
+                            }
+                        }
+                        fa = isFinite(fa) ? fa : 0; ga = isFinite(ga) ? ga : 0; fb = isFinite(fb) ? fb : 0; gb = isFinite(gb) ? gb : 0;
+
+                        const topA = Math.max(fa, ga), bottomA = Math.min(fa, ga);
+                        const topB = Math.max(fb, gb), bottomB = Math.min(fb, gb);
+                        const ya1 = topA, ya2 = bottomA, yb1 = topB, yb2 = bottomB;
+                        const denom = (yb2 - ya1) - (yb1 - ya2);
+                        const tParam = Math.abs(denom) > 1e-12 ? (ya2 - ya1) / denom : 0.5;
+                        const tClamped = Math.max(0, Math.min(1, tParam));
+                        const xCenter = aX + tClamped * (bX - aX);
+                        const yCenter = ya1 + tClamped * (yb2 - ya1);
+
+                        const valText = isFinite(areaValue) ? areaValue.toFixed(6) : '—';
+                        currentAreaBetweenAnnotation = {
+                            x: xCenter,
+                            y: yCenter,
+                            xref: 'x',
+                            yref: 'y',
+                            text: `📐 = ${valText}`,
+                            showarrow: false,
+                            xanchor: 'center',
+                            yanchor: 'middle',
+                            font: { size: 12, color: tTheme.font },
+                            bgcolor: tTheme.legendBg || 'rgba(255,255,255,0.9)',
+                            bordercolor: tTheme.legendBorder || '#ccc',
+                            borderwidth: 1,
+                            borderpad: 4,
+                            opacity: 0.95
+                        };
+                    } catch(_) { currentAreaBetweenAnnotation = null; }
 
                     errorDisplay.textContent = '';
                     displayAnalysisResults();
@@ -3624,6 +3696,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             ];
 
+            // Add integral value label centered in the shaded area
+            try {
+                // Evaluate function at the interval endpoints
+                let fa = null, fb = null;
+                try { fa = compiled.evaluate(Object.assign({ x: a }, scope)); } catch(_) { fa = null; }
+                try { fb = compiled.evaluate(Object.assign({ x: b }, scope)); } catch(_) { fb = null; }
+                if (!isFinite(fa)) fa = 0; if (!isFinite(fb)) fb = 0;
+
+                // Determine top/bottom values at edges relative to y=0 baseline
+                const topA = Math.max(fa, 0), bottomA = Math.min(fa, 0);
+                const topB = Math.max(fb, 0), bottomB = Math.min(fb, 0);
+
+                // Compute intersection of diagonals of the quadrilateral
+                // formed by (a,topA),(a,bottomA),(b,topB),(b,bottomB)
+                const ya1 = topA, ya2 = bottomA, yb1 = topB, yb2 = bottomB;
+                const denom = (yb2 - ya1) - (yb1 - ya2); // = (yb2 - yb1) + (ya2 - ya1)
+                const tParam = Math.abs(denom) > 1e-12 ? (ya2 - ya1) / denom : 0.5;
+                const tClamped = Math.max(0, Math.min(1, tParam));
+                const xCenter = a + tClamped * (b - a);
+                const yCenter = ya1 + tClamped * (yb2 - ya1);
+
+                // Format integral value
+                const intVal = currentAnalysisData && currentAnalysisData.integral && isFinite(currentAnalysisData.integral.value)
+                    ? Number(currentAnalysisData.integral.value)
+                    : NaN;
+                const valueText = isFinite(intVal) ? intVal.toFixed(6) : '—';
+
+                // Push centered annotation
+                currentIntegralAnnotations.push({
+                    x: xCenter,
+                    y: yCenter,
+                    xref: 'x',
+                    yref: 'y',
+                    text: `∫ = ${valueText}`,
+                    showarrow: false,
+                    xanchor: 'center',
+                    yanchor: 'middle',
+                    font: { size: 12, color: t.font },
+                    bgcolor: t.legendBg || 'rgba(255,255,255,0.9)',
+                    bordercolor: t.legendBorder || '#ccc',
+                    borderwidth: 1,
+                    borderpad: 4,
+                    opacity: 0.95
+                });
+            } catch(_) { /* non-fatal */ }
+
             // Redraw plot with shading
             plotButton.click();
 
@@ -3717,6 +3835,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 showlegend: false,
                 connectgaps: false
             };
+
+            // Place centered label on the highlighted segment with the integral value
+            try {
+                const tMid = (aRad + bRad) / 2;
+                let xMid = null, yMid = null;
+                try { xMid = compiledX.evaluate(Object.assign({ t: tMid }, scope)); } catch(_) { xMid = null; }
+                try { yMid = compiledY.evaluate(Object.assign({ t: tMid }, scope)); } catch(_) { yMid = null; }
+                if (!isFinite(xMid) || !isFinite(yMid)) {
+                    // Fallback to sample midpoint
+                    const midIdx = Math.floor(xs.length / 2);
+                    xMid = xs[midIdx];
+                    yMid = ys[midIdx];
+                }
+                const intVal = currentAnalysisData && currentAnalysisData.integral && isFinite(currentAnalysisData.integral.value)
+                    ? Number(currentAnalysisData.integral.value)
+                    : NaN;
+                const valueText = isFinite(intVal) ? intVal.toFixed(6) : '—';
+                currentParametricAnnotation = {
+                    x: xMid,
+                    y: yMid,
+                    xref: 'x',
+                    yref: 'y',
+                    text: `∫ = ${valueText}`,
+                    showarrow: false,
+                    xanchor: 'center',
+                    yanchor: 'middle',
+                    font: { size: 12, color: t.font },
+                    bgcolor: t.legendBg || 'rgba(255,255,255,0.9)',
+                    bordercolor: t.legendBorder || '#ccc',
+                    borderwidth: 1,
+                    borderpad: 4,
+                    opacity: 0.95
+                };
+            } catch(_) { currentParametricAnnotation = null; }
 
             plotButton.click();
         } catch (err) {
