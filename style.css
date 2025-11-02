@@ -21,6 +21,10 @@ html, body {
     box-sizing: border-box;
 }
 
+/* Iframe embedding: avoid vh-driven height feedback loops */
+html.iframe-embed, .iframe-embed body { height: auto !important; min-height: 0 !important; }
+.iframe-embed .calculator-container { min-height: 0 !important; }
+
 /* Consistent, centered width for header fieldsets and controls */
 :root {
     /* Main content width for header fieldsets (Tryb, Funkcje, Renderowanie, button) */

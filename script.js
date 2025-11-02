@@ -37,23 +37,32 @@ function postFrameHeight(trigger) {
         try {
             const de = document.documentElement;
             const b = document.body;
-            const h = Math.max(
-                de.scrollHeight, de.offsetHeight, de.clientHeight,
-                b ? b.scrollHeight : 0, b ? b.offsetHeight : 0
+            // Prefer scrollHeight-only to avoid viewport (vh) feedback loops in iframes
+            let h = Math.max(
+                de ? de.scrollHeight : 0,
+                b ? b.scrollHeight : 0
             );
+            // Normalize to integer pixels
+            h = Math.ceil(h);
             // Dedupe: only send if height changed meaningfully
             if (typeof postFrameHeight._last === 'number') {
                 if (Math.abs(h - postFrameHeight._last) < 24) return;
             }
             // Throttle: ensure a minimum interval between posts
             const now = Date.now();
-            if (now - postFrameHeight._lastSentAt < 200) return;
+            if (now - postFrameHeight._lastSentAt < 500) return;
+            // Do not spam parent with tiny deltas relative to last sent
+            if (typeof postFrameHeight._lastSentH === 'number' && Math.abs(h - postFrameHeight._lastSentH) < 16) {
+                postFrameHeight._last = h; // update internal last to avoid oscillation
+                return;
+            }
             postFrameHeight._last = h;
             postFrameHeight._lastSentAt = now;
+            postFrameHeight._lastSentH = h;
             // Send message to parent; parent may filter origin
             parent.postMessage({ type: 'kalkulator-funkcji/height', height: h, trigger: trigger || '' }, '*');
         } catch (_) {}
-    }, 100);
+    }, 150);
 }
 
 // Observe size/DOM changes to keep iframe height in sync

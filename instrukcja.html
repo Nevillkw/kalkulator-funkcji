@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instrukcja — Interaktywny Kalkulator Funkcji</title>
+  <meta name="description" content="Instrukcja obsługi kalkulatora funkcji: wykresy 2D/3D, całki, analiza (zera, ekstrema, przegięcia), udostępnianie linku, osadzanie w iframe.">
+  <link rel="canonical" href="https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/instrukcja.html">
+  <meta property="og:title" content="Instrukcja — Interaktywny Kalkulator Funkcji">
+  <meta property="og:description" content="Jak korzystać: tryby, analiza, całki i pole między krzywymi, styczna/normalna po kliknięciu, udostępnianie linku, osadzanie w iframe.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/instrukcja.html">
+  <meta property="og:image" content="https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/favicon.svg">
+  <meta property="og:site_name" content="Kalkulator funkcji — arturmrowicki.pl">
+  <meta property="og:locale" content="pl_PL">
+  <meta name="theme-color" content="#0b5ed7">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { max-width: 980px; margin: 0 auto; padding: 16px; line-height: 1.65; color: #263238; }
+    header h1 { font-size: 22px; margin: 8px 0 4px; }
+    .meta { color:#607d8b; font-size:12px; margin-bottom: 8px; }
+    main section { background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:16px; margin:12px 0; }
+    main h2 { font-size: 16px; margin: 0 0 8px 0; }
+    a { color:#0b5ed7; text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .back { display:inline-block; margin: 8px 0 16px 0; font-size:13px; }
+    code { background:#f8f9fa; padding:1px 4px; border:1px solid #e0e0e0; border-radius:4px; }
+    ul { padding-left: 18px; }
+    ol { padding-left: 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="./">← Wróć do kalkulatora</a>
+    <h1>Instrukcja</h1>
+    <div class="meta">Ostatnia aktualizacja: 2025-11-02</div>
+  </header>
+
+  <main>
+    <section>
+      <h2>1. Tryby i podstawy</h2>
+      <ol>
+        <li>Wybierz tryb:
+          <ul>
+            <li>Kartezjański: <code>y = f(x)</code></li>
+            <li>Parametryczny: <code>x(t)</code>, <code>y(t)</code></li>
+            <li>Biegunowy: <code>r(t)</code> (gdzie <code>t</code> = <code>θ</code>)</li>
+            <li>3D: <code>z = f(x,y)</code></li>
+          </ul>
+        </li>
+        <li>Wpisz funkcje i ustaw zakresy. W polach liczbowych możesz używać wyrażeń i π, np. <code>2*pi</code>, <code>pi/3</code>, <code>25*2</code>.</li>
+        <li>Przełącznik „Kąty” decyduje o interpretacji wartości kątowych (Radiany/Stopnie) w granicach i funkcjach trygonometrycznych.</li>
+        <li>Kliknij „Rysuj wykres”. Użyj „Auto‑fit” do dopasowania widoku lub „Reset widoku”.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>2. Analiza i klik na wykres</h2>
+      <ul>
+        <li>Wyniki analizy (kartezjański): miejsca zerowe, ekstrema, punkty przegięcia, przecięcia, asymptoty; dodatkowo przedziały monotoniczności i konkawości. Przy monotoniczności automatycznie pojawiają się znaczniki ekstremów.</li>
+        <li>Klik na wykresie (kartezjański): rysuje styczną i normalną w punkcie.</li>
+        <li>Klik w trybie parametrycznym: rysuje wektor styczny i normalny dla zaznaczonego parametru <code>t</code>.</li>
+        <li>Tryb biegunowy: interaktywna styczna/normalna po kliknięciu jest wyłączona (ograniczenia osi).</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>3. Całki i pole między krzywymi</h2>
+      <ul>
+        <li>Kartezjański: <code>∫ f(x) dx</code> — cieniowanie części dodatnich/ujemnych.</li>
+        <li>Między krzywymi: pole na przedziale <code>[a,b]</code> dla <code>f₁</code> i <code>f₂</code>.</li>
+        <li>Parametryczny: <code>∫ y(t) · x'(t) dt</code> — podświetlenie odcinka <code>t∈[a,b]</code>.</li>
+        <li>Biegunowy: <code>½ ∫ r(t)^2 dt</code> — klin na wykresie.</li>
+        <li>3D: <code>∬ z(x,y) dA</code> po prostokącie (wartość w panelu wyników).</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>4. Oś, render i motywy</h2>
+      <ul>
+        <li>Oś X w wielokrotnościach π (kartezjański) — przełącznik „Oś X w π”.</li>
+        <li>Dokładność próbkowania: <strong>Szybko / Domyślna / Precyzyjna</strong>.</li>
+        <li>Fullscreen: panel dokowany z opcjami (legenda, siatka, osie 0, opisy osi, równa skala, grubość linii). Na telefonie przycisk <strong>☰</strong> pokazuje/ukrywa panel.</li>
+        <li>Motyw: przełącznik <strong>deflatul</strong> w głównym interfejsie i szybki ciemny motyw w fullscreen.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>5. Udostępnianie i historia</h2>
+      <ul>
+        <li>„Udostępnij link” kopiuje permalink do schowka. Link zawiera base64url‑zakodowany stan i otwiera się na stronie produkcyjnej: <a href="https://arturmrowicki.pl/narzedzia/kalkulator-funkcji/" target="_blank" rel="noopener">arturmrowicki.pl/narzedzia/kalkulator-funkcji/</a>.</li>
+        <li>Adres URL aktualizuje się po każdym udanym rysowaniu.</li>
+        <li>Przy starcie stan jest przywracany z adresu URL (jeśli obecny) albo z ostatniej historii.</li>
+        <li>Historia przechowuje ostatnie widoki (lokalnie w przeglądarce), można ją wyczyścić.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>6. Osadzanie w iframe</h2>
+      <p>Aplikacja obsługuje osadzenie w <code>&lt;iframe&gt;</code>:</p>
+      <ul>
+        <li>Iframe automatycznie komunikuje swoją wysokość do rodzica przez <code>postMessage</code> (<code>type: 'kalkulator-funkcji/height'</code>).</li>
+        <li>Rodzic może zażądać permalinka (<code>'kalkulator-funkcji/getPermalink'</code>), przywrócić stan (<code>'kalkulator-funkcji/restore'</code>) lub odczytać aktualny stan (<code>'kalkulator-funkcji/getState'</code>).</li>
+        <li>Wysokość jest stabilizowana, by uniknąć zapętleń (scrollHeight‑only, throttling i filtry delta).</li>
+      </ul>
+      <p>Przykładowy przepływ (wysoki poziom):</p>
+      <ol>
+        <li>Po załadowaniu iframe: poproś o permalink albo samodzielnie ustaw <code>#s=...</code> w adresie iframe.</li>
+        <li>Obsługuj komunikat wysokości i ustawiaj <code>iframe.style.height = data.height + 'px'</code> po zweryfikowaniu zdarzenia i pochodzenia.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>7. Składnia</h2>
+      <ul>
+        <li>Operatory: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code></li>
+        <li>Funkcje: <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>sqrt</code>, <code>abs</code>, <code>log</code> (10), <code>ln</code>, <code>exp</code></li>
+        <li>Zmienne: <code>x</code> (kartezjański), <code>t</code> (param./biegunowy), <code>x,y</code> (3D)</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>8. Wskazówki</h2>
+      <ul>
+        <li>W granicach używaj wyrażeń: <code>pi/2</code>, <code>3*pi</code>, <code>-pi</code> itd.</li>
+        <li>„Auto‑fit” dopasowuje widok do krzywych i znaczników analizy.</li>
+        <li>W fullscreen kartezjańskim zakres może się rozszerzyć automatycznie, aby pokazać znaczniki analizy.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>9. Licencja i kontakt</h2>
+      <p>Licencja: All Rights Reserved. Zobacz <a href="terms.html">Warunki użycia</a> oraz plik <a href="LICENSE">Licencja</a>. W sprawach licencyjnych i komercyjnych: <a href="https://arturmrowicki.pl" target="_blank" rel="noopener">arturmrowicki.pl</a>.</p>
+    </section>
+  </main>
+
+  <footer style="margin-top:16px; padding:12px 0; border-top:1px solid #e0e0e0; font-size:12px; color:#607d8b; text-align:center;">
+    © 2025 Artur Mrowicki · Wszystkie prawa zastrzeżone ·
+    <a href="LICENSE">Licencja</a> ·
+    <a href="terms.html">Warunki użycia</a> ·
+    <a href="./">Kalkulator</a> ·
+    <a href="https://arturmrowicki.pl" target="_blank" rel="noopener">arturmrowicki.pl</a>
+  </footer>
+</body>
+</html>
