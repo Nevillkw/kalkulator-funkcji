@@ -1602,8 +1602,31 @@ code {
         justify-content: center;
         background: #1976d2;
         color: #fff;
-        z-index: 90; /* ponad fs-dock */
+        z-index: 1000; /* ponad wszystko w fullscreen */
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        border: 1px solid #90caf9;
+        font-size: 18px;
+        padding: 0;
+    }
+}
+
+/* Landscape phones often exceed 640px width; ensure the toggle is visible there too */
+@media (orientation: landscape) and (max-height: 520px) {
+    #chartContainer:fullscreen .fs-mobile-toggle,
+    #chartContainer:-webkit-full-screen .fs-mobile-toggle {
+        display: inline-flex;
+        position: fixed; /* przyklej do viewportu w fullscreen */
+        right: max(12px, env(safe-area-inset-right, 0px));
+        bottom: max(12px, env(safe-area-inset-bottom, 0px));
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        align-items: center;
+        justify-content: center;
+        background: #1976d2;
+        color: #fff;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
         border: 1px solid #90caf9;
         font-size: 18px;
         padding: 0;
